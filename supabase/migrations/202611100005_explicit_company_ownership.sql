@@ -202,3 +202,75 @@ CREATE POLICY materiel_pieces_write_central ON public.materiel_pieces_remplacabl
     AND EXISTS (SELECT 1 FROM public.materiel_engins m
       WHERE m.id = materiel_id AND m.entreprise_id = public.current_company_id())
   );
+
+
+-- Référentiels et montants sensibles : pas de lecture de données bancaires ou
+-- de factures fournisseurs par les rôles de chantier.
+DROP POLICY IF EXISTS fournisseurs_select_company ON public.fournisseurs;
+CREATE POLICY fournisseurs_select_company ON public.fournisseurs
+  FOR SELECT TO authenticated
+  USING (
+    entreprise_id = public.current_company_id()
+    AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_APPROVISIONNEMENTS','RESPONSABLE_COMPTABILITE'])
+  );
+
+DROP POLICY IF EXISTS comptes_bancaires_select_scope ON public.comptes_bancaires;
+CREATE POLICY comptes_bancaires_select_scope ON public.comptes_bancaires
+  FOR SELECT TO authenticated
+  USING (
+    entreprise_id = public.current_company_id()
+    AND (
+      public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMPTABILITE'])
+      OR (
+        public.current_app_user_type() = 'CHANTIER'
+        AND chantier_dedie_id IS NOT NULL
+        AND public.can_access_chantier(chantier_dedie_id)
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS factures_select_company ON public.appro_factures_fournisseurs;
+CREATE POLICY factures_select_company ON public.appro_factures_fournisseurs
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.fournisseurs f
+      WHERE f.id = fournisseur_id AND f.entreprise_id = public.current_company_id())
+    AND (
+      public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMPTABILITE','RESPONSABLE_APPROVISIONNEMENTS'])
+      OR (
+        public.current_app_user_type() = 'CHANTIER'
+        AND bon_commande_id IS NOT NULL
+        AND EXISTS (SELECT 1 FROM public.appro_bons_commande bc
+          WHERE bc.id = bon_commande_id AND public.can_access_chantier(bc.chantier_id))
+      )
+    )
+  );
+
+-- Les données techniques et le parc sont accessibles aux rôles qui en ont besoin,
+-- pas à tous les profils centraux par le seul fait d'appartenir à l'entreprise.
+DROP POLICY IF EXISTS technique_lots_chantier_scope ON public.technique_lots;
+CREATE POLICY technique_lots_select_scope ON public.technique_lots
+  FOR SELECT TO authenticated
+  USING (
+    public.can_access_chantier(chantier_id)
+    AND (
+      public.current_app_user_type() = 'CHANTIER'
+      OR public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_TECHNIQUE'])
+    )
+  );
+CREATE POLICY technique_lots_insert_scope ON public.technique_lots
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    public.can_access_chantier(chantier_id)
+    AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_TECHNIQUE','CONDUCTEUR_TRAVAUX','METREUR_VERIFICATEUR'])
+  );
+CREATE POLICY technique_lots_update_scope ON public.technique_lots
+  FOR UPDATE TO authenticated
+  USING (
+    public.can_access_chantier(chantier_id)
+    AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_TECHNIQUE','CONDUCTEUR_TRAVAUX','METREUR_VERIFICATEUR'])
+  )
+  WITH CHECK (
+    public.can_access_chantier(chantier_id)
+    AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_TECHNIQUE','CONDUCTEUR_TRAVAUX','METREUR_VERIFICATEUR'])
+  );
