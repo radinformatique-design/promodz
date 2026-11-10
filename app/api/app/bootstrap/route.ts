@@ -23,13 +23,24 @@ export async function GET() {
         include: { lotsTravaux: true, comptesBancaires: true },
         orderBy: { created_at: 'desc' },
       }),
-      (profile.type === 'CHANTIER' || isCompanyAdmin(profile) || profile.role.code === 'RESPONSABLE_RH')
+      (profile.type === 'CHANTIER')
         ? prisma.employe.findMany({
             where: { chantier_actuel_id: { in: chantierIds } },
-            include: { chantierActuel: true },
+            select: {
+              id: true, matricule: true, nom: true, prenom: true, fonction: true,
+              qualification: true, type_contrat: true, chantier_actuel_id: true,
+              statut: true, telephone: true,
+              chantierActuel: { select: { id: true, nom_projet: true, wilaya: true, commune: true } },
+            },
             orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
           })
-        : Promise.resolve([]),
+        : (isCompanyAdmin(profile) || profile.role.code === 'RESPONSABLE_RH')
+          ? prisma.employe.findMany({
+              where: { chantier_actuel_id: { in: chantierIds } },
+              include: { chantierActuel: true },
+              orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
+            })
+          : Promise.resolve([]),
       (isCompanyAdmin(profile) || profile.role.code === 'RESPONSABLE_COMPTABILITE')
         ? prisma.compteBancaire.findMany({
             where: { entreprise_id: profile.entreprise_id },
