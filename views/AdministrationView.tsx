@@ -335,7 +335,7 @@ export const AdministrationView: React.FC = () => {
 
   // Matrix toggle helper
   const handleToggleMatrixCell = (roleId: string, permId: string) => {
-    if (roleId === 'role-admin') return; // Admin is always 100% granted
+    if (roles.find(role => role.id === roleId)?.code === 'ADMINISTRATEUR') return; // Admin is always 100% granted
 
     setMatrixState(prev => {
       const exists = prev.some(rp => rp.role_id === roleId && rp.permission_id === permId);
@@ -349,7 +349,7 @@ export const AdministrationView: React.FC = () => {
 
   // Cocher / Décocher toutes les actions d'un module pour un rôle spécifique
   const handleToggleRoleModule = (roleId: string, modCode: ModuleCode) => {
-    if (roleId === 'role-admin') return;
+    if (roles.find(role => role.id === roleId)?.code === 'ADMINISTRATEUR') return;
     const permIds = ACTIONS_LIST.map(a => `perm-${modCode.toLowerCase()}-${a.toLowerCase()}`);
     const allGranted = permIds.every(pid =>
       matrixState.some(rp => rp.role_id === roleId && rp.permission_id === pid)
@@ -759,7 +759,7 @@ export const AdministrationView: React.FC = () => {
 
                             <button
                               onClick={() => handleToggleUserStatus(u)}
-                              disabled={u.role_id === 'role-admin'}
+                              disabled={roles.some(role => role.id === u.role_id && role.code === 'ADMINISTRATEUR')}
                               className={`p-1.5 rounded hover:bg-slate-100 ${
                                 u.statut === 'ACTIF' ? 'text-amber-600' : 'text-emerald-600'
                               } disabled:opacity-30`}
@@ -768,7 +768,7 @@ export const AdministrationView: React.FC = () => {
                               {u.statut === 'ACTIF' ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
                             </button>
 
-                            {u.role_id !== 'role-admin' && (
+                            {!roles.some(role => role.id === u.role_id && role.code === 'ADMINISTRATEUR') && (
                               <button
                                 onClick={() => setDeleteConfirmUser(u)}
                                 className="p-1.5 rounded hover:bg-rose-50 text-rose-500 hover:text-rose-700"
