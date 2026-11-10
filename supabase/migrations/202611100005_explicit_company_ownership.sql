@@ -5,6 +5,8 @@
 DO $$
 DECLARE
   table_name text;
+  has_unassigned_rows boolean;
+  fk_name text;
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
     'materiel_engins',
@@ -14,18 +16,18 @@ BEGIN
     'commercial_clients'
   ] LOOP
     EXECUTE format('ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS entreprise_id text', table_name);
-    EXECUTE format(
-      'DO $inner$ BEGIN IF EXISTS (SELECT 1 FROM public.%I WHERE entreprise_id IS NULL) THEN RAISE EXCEPTION ''La table %I contient des lignes sans entreprise_id. Renseignez-les avant la migration.''; END IF; END $inner$',
-      table_name, table_name
-    );
+    EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I WHERE entreprise_id IS NULL)', table_name)
+      INTO has_unassigned_rows;
+    IF has_unassigned_rows THEN
+      RAISE EXCEPTION 'La table % contient des lignes sans entreprise_id. Renseignez-les avant la migration.', table_name;
+    END IF;
     EXECUTE format('ALTER TABLE public.%I ALTER COLUMN entreprise_id SET NOT NULL', table_name);
-    IF NOT EXISTS (
-      SELECT 1 FROM pg_constraint
-      WHERE conname = table_name || '_entreprise_id_fkey'
-    ) THEN
+
+    fk_name := table_name || '_entreprise_id_fkey';
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = fk_name) THEN
       EXECUTE format(
         'ALTER TABLE public.%I ADD CONSTRAINT %I FOREIGN KEY (entreprise_id) REFERENCES public.entreprises(id) ON DELETE CASCADE',
-        table_name, table_name || '_entreprise_id_fkey'
+        table_name, fk_name
       );
     END IF;
     EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON public.%I (entreprise_id)', table_name || '_entreprise_id_idx', table_name);
