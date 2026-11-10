@@ -141,7 +141,7 @@ export async function PATCH(request: Request) {
   try {
     const row = await prisma.materielEngin.update({
       where: { id: target.id },
-      data,
+      data: data as any,
       include: { chantierActuel: true, entretiens: true, piecesRemplacables: true },
     });
     return NextResponse.json(row);
