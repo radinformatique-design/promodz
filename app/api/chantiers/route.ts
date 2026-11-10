@@ -13,7 +13,10 @@ export async function GET() {
   try {
     const chantiers = await prisma.chantier.findMany({
       where,
-      include: { lotsTravaux: true, comptesBancaires: true },
+      include: {
+        lotsTravaux: true,
+        comptesBancaires: isCompanyAdmin(current.profile) || current.profile.role.code === 'RESPONSABLE_COMPTABILITE',
+      },
       orderBy: { created_at: 'desc' },
     });
     return NextResponse.json(chantiers);
