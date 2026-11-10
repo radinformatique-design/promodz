@@ -55,6 +55,7 @@ CREATE POLICY caisse_select_scope ON public.comptabilite_caisses_chantier
   );
 
 DROP POLICY IF EXISTS caisse_manage_central ON public.comptabilite_caisses_chantier;
+DROP POLICY IF EXISTS caisse_insert_central ON public.comptabilite_caisses_chantier;
 CREATE POLICY caisse_insert_central ON public.comptabilite_caisses_chantier
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -67,6 +68,7 @@ CREATE POLICY caisse_insert_central ON public.comptabilite_caisses_chantier
     )
   );
 
+DROP POLICY IF EXISTS caisse_update_central ON public.comptabilite_caisses_chantier;
 CREATE POLICY caisse_update_central ON public.comptabilite_caisses_chantier
   FOR UPDATE TO authenticated
   USING (
