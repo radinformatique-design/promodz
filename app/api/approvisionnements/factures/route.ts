@@ -13,7 +13,7 @@ export async function GET() {
       fournisseur: { entreprise_id: current.profile.entreprise_id },
       ...(current.profile.type === 'CHANTIER' ? { bonCommande: { chantier_id: { in: ids } } } : {}),
     },
-    include: { fournisseur: true, bonCommande: { include: { chantier: true } } },
+    include: { fournisseur: { select: { id: true, raison_sociale: true, code_fournisseur: true, categorie: true, telephone: true, email: true } }, bonCommande: { include: { chantier: true } } },
     orderBy: { date_facture: 'desc' },
   });
   return NextResponse.json(rows);
