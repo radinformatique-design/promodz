@@ -8,8 +8,6 @@ import {
   isCompanyAdmin,
 } from '@/lib/auth/current-app-profile';
 
-export const dynamic = 'force-dynamic';
-
 const isCentralFinance = (profile: { type: string; role: { code: string } }) =>
   profile.type === 'CENTRAL' &&
   (isCompanyAdmin(profile as any) || hasAnyRole(profile as any, ['RESPONSABLE_COMPTABILITE']));
@@ -32,7 +30,9 @@ async function getVisibleChantierIds(profile: {
   return rows.map((row) => row.id);
 }
 
-type CaisseBalanceDb = Pick<typeof prisma, 'mouvementCaisse'>;\n\nasync function getBalance(caisseId: string, db: CaisseBalanceDb = prisma) {
+type CaisseBalanceDb = Pick<typeof prisma, 'mouvementCaisse'>;
+
+async function getBalance(caisseId: string, db: CaisseBalanceDb = prisma) {
   const [credits, debits] = await Promise.all([
     db.mouvementCaisse.aggregate({
       where: { caisse_id: caisseId, type: { in: ['APPROVISIONNEMENT', 'AJUSTEMENT'] } },
