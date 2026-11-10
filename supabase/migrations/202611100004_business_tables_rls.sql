@@ -399,10 +399,7 @@ CREATE POLICY budgets_select_scope ON public.comptabilite_budgets
   FOR SELECT TO authenticated
   USING (
     public.can_access_chantier(chantier_id)
-    AND (
-      public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMPTABILITE'])
-      OR public.current_app_user_type() = 'CHANTIER'
-    )
+    AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMPTABILITE'])
   );
 CREATE POLICY budgets_insert_compta ON public.comptabilite_budgets
   FOR INSERT TO authenticated
