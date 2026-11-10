@@ -1142,7 +1142,6 @@ export const MaterielView: React.FC = () => {
                 e.preventDefault();
                 const result = await ajouterVehicule({
                   ...formDataVehicule,
-                  entreprise_id: 'ent-001',
                   historique_affectations: [
                     {
                       id: `aff-${Date.now()}`,
