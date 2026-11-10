@@ -109,6 +109,32 @@ export class AuthService {
     this.currentAuthenticatedUser = null;
   }
 
+  public restoreAuthenticatedSession(
+    user: Utilisateur,
+    roles: Role[],
+    permissions: Permission[],
+    rolePermissions: RolePermission[],
+    users: Utilisateur[] = [user]
+  ): void {
+    this.currentAuthenticatedUser = user;
+    this.users = [...users];
+    this.roles = [...roles];
+    this.permissions = [...permissions];
+    this.rolePermissions = [...rolePermissions];
+  }
+
+  public updateAuthorizationData(
+    roles: Role[],
+    permissions: Permission[],
+    rolePermissions: RolePermission[],
+    users?: Utilisateur[]
+  ): void {
+    this.roles = [...roles];
+    this.permissions = [...permissions];
+    this.rolePermissions = [...rolePermissions];
+    if (users) this.users = [...users];
+  }
+
   public getAuthenticatedUser(): Utilisateur | null {
     return this.currentAuthenticatedUser;
   }
