@@ -444,6 +444,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         auditRows,
         pointageRows,
         leaveRows,
+        materialRows,
         userRows,
         rbac,
       ] = await Promise.all([
@@ -457,6 +458,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         readApi('/api/audit-logs'),
         readApi('/api/rh/pointages'),
         readApi('/api/rh/conges'),
+        readApi('/api/materiel/parc'),
         readApi('/api/admin/users'),
         readApi('/api/admin/rbac'),
       ]);
@@ -494,6 +496,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           },
           updated_at: employee.created_at,
         })) as unknown as Employe[]);
+      }
+
+      if (materialRows) {
+        setVehicules(materialRows.map((row: any) => ({
+          ...row,
+          entreprise_id: row.entreprise_id,
+          num_interne: row.code_parc,
+          categorie: row.type_engin,
+          statut: row.statut_operationnel,
+          heures_fonctionnement: row.compteur_heures,
+          chantier_id: row.chantier_actuel_id || undefined,
+          date_prochaine_vidange: row.date_prochaine_vidange || undefined,
+          date_prochain_controle_technique: row.date_prochain_controle_technique || undefined,
+          date_fin_assurance: row.date_fin_assurance || undefined,
+          created_at: row.created_at,
+        })) as unknown as Vehicule[]);
+        setEntretiens(materialRows.flatMap((vehicle: any) => (vehicle.entretiens || []).map((item: any) => ({
+          ...item,
+          vehicule_id: vehicle.id,
+          vehicule_nom: [vehicle.marque, vehicle.modele].filter(Boolean).join(' '),
+          date: item.date,
+          cout: Number(item.cout || 0),
+          piece_rechange_utilisee: item.piece_rechange || '',
+        }))) as unknown as Entretien[]);
+        setPiecesRemplacables(materialRows.flatMap((vehicle: any) => (vehicle.piecesRemplacables || []).map((item: any) => ({
+          ...item,
+          vehicule_id: vehicle.id,
+          cout_achat_dzd: Number(item.cout_achat_dzd || 0),
+          date_installation: item.date_installation,
+          profondeur_sculpture_mm: item.profondeur_sculpture_mm == null ? undefined : Number(item.profondeur_sculpture_mm),
+        }))) as unknown as PieceRemplacable[]);
       }
 
       if (supplierRows) setFournisseurs(supplierRows.map((row: any) => ({
