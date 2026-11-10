@@ -315,7 +315,6 @@ export class AuthService {
       updated_at: new Date().toISOString()
     };
 
-    USER_PASSWORDS[cleanEmail] = userData.initialPassword || DEFAULT_DEMO_PASSWORD;
     this.users.push(newUser);
     return newUser;
   }
@@ -363,7 +362,6 @@ export class AuthService {
     });
 
     this.users = this.users.filter(u => u.id !== id);
-    delete USER_PASSWORDS[user.email.toLowerCase()];
 
     return { success: true, message: `L'utilisateur ${user.prenom} ${user.nom} a été supprimé.` };
   }
