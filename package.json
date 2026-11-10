@@ -19,7 +19,9 @@
     "prisma": "6.3.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.49.1"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
