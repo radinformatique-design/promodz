@@ -274,3 +274,30 @@ CREATE POLICY technique_lots_update_scope ON public.technique_lots
     public.can_access_chantier(chantier_id)
     AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_TECHNIQUE','CONDUCTEUR_TRAVAUX','METREUR_VERIFICATEUR'])
   );
+
+
+DROP POLICY IF EXISTS materiel_engins_select_scope ON public.materiel_engins;
+CREATE POLICY materiel_engins_select_scope ON public.materiel_engins
+  FOR SELECT TO authenticated
+  USING (
+    entreprise_id = public.current_company_id()
+    AND (
+      (
+        chantier_actuel_id IS NOT NULL
+        AND public.can_access_chantier(chantier_actuel_id)
+        AND (
+          public.current_app_user_type() = 'CHANTIER'
+          OR public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL'])
+        )
+      )
+      OR (
+        chantier_actuel_id IS NULL
+        AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL'])
+      )
+    )
+  );
+
+-- Les dossiers RH complets (salaire, numéro CNAS et données personnelles) ne
+-- sont pas exposés directement par PostgREST. L'application passe par les API
+-- serveur qui renvoient un jeu de champs adapté au rôle.
+REVOKE SELECT ON public.rh_employes FROM authenticated;
