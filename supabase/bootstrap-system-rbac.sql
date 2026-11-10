@@ -34,7 +34,8 @@ WITH modules(module) AS (
     ('ADMINISTRATION'),
     ('DOCUMENTS'),
     ('NOTIFICATIONS'),
-    ('PARAMETRES')
+    ('PARAMETRES'),
+    ('CAISSE')
 ), actions(action) AS (
   VALUES
     ('CONSULTER'),
@@ -49,6 +50,16 @@ INSERT INTO public.permissions (id, module, action, description)
 SELECT gen_random_uuid()::text, modules.module, actions.action,
        actions.action || ' dans le module ' || modules.module
 FROM modules CROSS JOIN actions
+ON CONFLICT (module, action) DO NOTHING;
+
+-- Actions spécifiques au cycle de vie de la caisse chantier.
+INSERT INTO public.permissions (id, module, action, description)
+VALUES
+  (gen_random_uuid()::text, 'CAISSE', 'SORTIR', 'Enregistrer une sortie de caisse chantier'),
+  (gen_random_uuid()::text, 'CAISSE', 'DEMANDER', 'Demander un réapprovisionnement de caisse'),
+  (gen_random_uuid()::text, 'CAISSE', 'APPROVISIONNER', 'Enregistrer un approvisionnement de caisse'),
+  (gen_random_uuid()::text, 'CAISSE', 'GERER_PLAFOND', 'Définir le plafond de caisse chantier'),
+  (gen_random_uuid()::text, 'CAISSE', 'TRAITER_DEMANDE', 'Approuver ou refuser une demande de caisse')
 ON CONFLICT (module, action) DO NOTHING;
 
 -- L'administrateur possède toutes les actions du catalogue.
@@ -80,6 +91,13 @@ WITH assignments(role_code, module, action) AS (
   ('RESPONSABLE_JURIDIQUE', 'DOCUMENTS', 'CONSULTER'),
   ('RESPONSABLE_JURIDIQUE', 'DOCUMENTS', 'VALIDER'),
   ('RESPONSABLE_JURIDIQUE', 'NOTIFICATIONS', 'CONSULTER'),
+  ('RESPONSABLE_COMPTABILITE', 'CAISSE', 'CONSULTER'),
+  ('RESPONSABLE_COMPTABILITE', 'CAISSE', 'APPROVISIONNER'),
+  ('RESPONSABLE_COMPTABILITE', 'CAISSE', 'GERER_PLAFOND'),
+  ('RESPONSABLE_COMPTABILITE', 'CAISSE', 'TRAITER_DEMANDE'),
+  ('CONDUCTEUR_TRAVAUX', 'CAISSE', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'CAISSE', 'SORTIR'),
+  ('CONDUCTEUR_TRAVAUX', 'CAISSE', 'DEMANDER'),
   ('RESPONSABLE_COMPTABILITE', 'DASHBOARD', 'CONSULTER'),
   ('RESPONSABLE_COMPTABILITE', 'COMPTABILITE', 'CONSULTER'),
   ('RESPONSABLE_COMPTABILITE', 'COMPTABILITE', 'AJOUTER'),
