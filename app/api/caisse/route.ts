@@ -96,6 +96,7 @@ export async function PUT(request: Request) {
     const caisse = await prisma.$transaction(async (tx) => {
       const existing = await tx.caisseChantier.findUnique({ where: { chantier_id: chantierId } });
       if (existing) {
+        await tx.$queryRaw`SELECT id FROM comptabilite_caisses_chantier WHERE id = ${existing.id} FOR UPDATE`;
         const balance = await getBalance(existing.id, tx);
         if (plafond < balance) throw new Error('Le plafond ne peut pas être inférieur au solde actuel.');
         return tx.caisseChantier.update({ where: { id: existing.id }, data: { plafond } });
