@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, isCompanyAdmin } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, isCompanyAdmin, hasAnyRole } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile)) return NextResponse.json({ error: 'Droits administrateur requis.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_APPROVISIONNEMENTS'])) return NextResponse.json({ error: 'Gestion des fournisseurs réservée au service approvisionnements.' }, { status: 403 });
 
   const body = await request.json();
   const required = ['raison_sociale', 'code_fournisseur', 'categorie', 'adresse', 'wilaya', 'telephone', 'email'];
