@@ -90,13 +90,12 @@ export const CaisseView: React.FC = () => {
   }, [currentUser, allChantiers]);
 
   useEffect(() => {
-    if (cashChantierId === 'ALL' && currentUser?.type === 'CENTRAL') return;
     if (cashChantierId && availableChantiers.some((chantier) => chantier.id === cashChantierId)) return;
     const initial = selectedChantierId !== 'ALL' && availableChantiers.some((chantier) => chantier.id === selectedChantierId)
       ? selectedChantierId
-      : currentUser?.type === 'CENTRAL' ? 'ALL' : availableChantiers[0]?.id || '';
+      : availableChantiers[0]?.id || '';
     setCashChantierId(initial);
-  }, [cashChantierId, selectedChantierId, availableChantiers, currentUser?.type]);
+  }, [cashChantierId, selectedChantierId, availableChantiers]);
 
   const loadFunds = async () => {
     setLoading(true);
@@ -231,7 +230,6 @@ export const CaisseView: React.FC = () => {
         <Building2 className="h-4 w-4 text-slate-500" />
         <label className="text-xs font-semibold text-slate-600">Chantier affiché</label>
         <select value={cashChantierId} onChange={(e) => setCashChantierId(e.target.value)} className="min-w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-          {currentUser?.type === 'CENTRAL' && <option value="ALL">Tous les chantiers</option>}
           {availableChantiers.map((chantier) => <option key={chantier.id} value={chantier.id}>{chantier.code_chantier} — {chantier.nom_projet}</option>)}
         </select>
         <span className="ml-auto text-xs text-slate-500">{visibleFunds.length} caisse(s) configurée(s)</span>
