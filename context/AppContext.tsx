@@ -434,6 +434,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (data.parametresGeneraux) setParametresGeneraux(data.parametresGeneraux);
       setAllChantiers(data.chantiers || []);
       setEmployes(data.employes || []);
+      const [usersResponse, rbacResponse] = await Promise.all([
+        fetch('/api/admin/users', { cache: 'no-store' }),
+        fetch('/api/admin/rbac', { cache: 'no-store' }),
+      ]);
+      if (usersResponse.ok) setUtilisateurs(await usersResponse.json());
+      if (rbacResponse.ok) {
+        const rbac = await rbacResponse.json();
+        setRoles(rbac.roles || []);
+        setPermissions(rbac.permissions || []);
+        setRolePermissions(rbac.rolePermissions || []);
+      }
     } catch (error) {
       console.error('[BatiProm] Chargement des données Supabase impossible :', error);
     }
@@ -455,17 +466,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setPermissions(data.permissions || []);
         setRolePermissions(data.rolePermissions || []);
         await loadApplicationData();
-        const [usersResponse, rbacResponse] = await Promise.all([
-          fetch('/api/admin/users', { cache: 'no-store' }),
-          fetch('/api/admin/rbac', { cache: 'no-store' }),
-        ]);
-        if (active && usersResponse.ok) setUtilisateurs(await usersResponse.json());
-        if (active && rbacResponse.ok) {
-          const rbac = await rbacResponse.json();
-          setRoles(rbac.roles || []);
-          setPermissions(rbac.permissions || []);
-          setRolePermissions(rbac.rolePermissions || []);
-        }
       } catch (error) {
         console.error('[BatiProm] Restauration de session Supabase impossible :', error);
       }
