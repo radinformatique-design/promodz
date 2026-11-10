@@ -95,7 +95,7 @@ export async function PATCH(request: Request) {
   try {
     return NextResponse.json(await prisma.pieceRemplacableVehicule.update({
       where: { id: target.id },
-      data,
+      data: data as any,
       include: { materiel: { select: { id: true, code_parc: true, marque: true, modele: true } } },
     }));
   } catch (error) {
