@@ -14,12 +14,7 @@ import {
   UserRole
 } from '../types/database';
 import {
-  DEMO_UTILISATEURS,
-  DEMO_ROLES,
-  DEMO_PERMISSIONS,
-  DEMO_ROLE_PERMISSIONS,
-  DEMO_SESSIONS,
-  MODULES_LIST
+    MODULES_LIST
 } from '../data/demoData';
 
 export interface VerificationResult {
@@ -30,11 +25,11 @@ export interface VerificationResult {
 }
 
 export class AuthService {
-  private users: Utilisateur[] = [...DEMO_UTILISATEURS];
-  private roles: Role[] = [...DEMO_ROLES];
-  private permissions: Permission[] = [...DEMO_PERMISSIONS];
-  private rolePermissions: RolePermission[] = [...DEMO_ROLE_PERMISSIONS];
-  private sessions: UserSession[] = [...DEMO_SESSIONS];
+  private users: Utilisateur[] = [];
+  private roles: Role[] = [];
+  private permissions: Permission[] = [];
+  private rolePermissions: RolePermission[] = [];
+  private sessions: UserSession[] = [];
   private currentSessionToken: string | null = null;
   private currentAuthenticatedUser: Utilisateur | null = null;
 
