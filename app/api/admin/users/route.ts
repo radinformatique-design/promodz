@@ -53,6 +53,12 @@ export async function PATCH(request: Request) {
     ? (await prisma.role.findUnique({ where: { id: String(allowed.role_id) }, select: { code: true } }))?.code
     : target.role.code;
   const nextStatus = String(allowed.statut || target.statut);
+  if (!['CENTRAL', 'CHANTIER'].includes(effectiveType)) {
+    return NextResponse.json({ error: 'Type utilisateur invalide.' }, { status: 400 });
+  }
+  if (!['ACTIF', 'SUSPENDU', 'DESACTIVE'].includes(nextStatus)) {
+    return NextResponse.json({ error: 'Statut utilisateur invalide.' }, { status: 400 });
+  }
   if (target.role.code === 'ADMINISTRATEUR' && (nextRoleCode !== 'ADMINISTRATEUR' || nextStatus !== 'ACTIF')) {
     const activeAdmins = await prisma.utilisateur.count({
       where: { entreprise_id: current.profile.entreprise_id, statut: 'ACTIF', role: { code: 'ADMINISTRATEUR' } },
