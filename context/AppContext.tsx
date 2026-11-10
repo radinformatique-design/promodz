@@ -461,6 +461,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (bootstrap.entreprise) setEntreprise(bootstrap.entreprise);
         if (bootstrap.parametresGeneraux) setParametresGeneraux(bootstrap.parametresGeneraux);
         setAllChantiers(bootstrap.chantiers || []);
+        setComptesBancaires(bootstrap.comptesBancaires || []);
         setEmployes((bootstrap.employes || []).map((employee: any) => ({
           ...employee,
           entreprise_id: bootstrap.entreprise?.id || '',
