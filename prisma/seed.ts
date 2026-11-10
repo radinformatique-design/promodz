@@ -4,6 +4,8 @@ import {
   DEMO_COMPTES_BANCAIRES,
   DEMO_PARAMETRES_GENERAUX,
   DEMO_ROLES,
+  DEMO_PERMISSIONS,
+  DEMO_ROLE_PERMISSIONS,
   DEMO_UTILISATEURS,
   DEMO_CHANTIERS,
   DEMO_FOURNISSEURS,
@@ -69,8 +71,30 @@ async function main() {
         code: role.code,
         libelle: role.libelle,
         description: role.description,
-        type_acces: (role as any).type_acces || 'CENTRAL',
+        type_acces: (role as any).type_acces || ((role as any).niveau_hierarchique > 2 ? 'CHANTIER' : 'CENTRAL'),
       },
+    });
+  }
+
+  // 3 bis. Catalogue des permissions et matrice par rôle (seed de démonstration uniquement)
+  console.log('3 bis. Insertion Permissions & RBAC...');
+  for (const permission of DEMO_PERMISSIONS) {
+    await prisma.permission.upsert({
+      where: { module_action: { module: permission.module, action: permission.action } },
+      update: { description: permission.description },
+      create: {
+        id: permission.id,
+        module: permission.module,
+        action: permission.action,
+        description: permission.description,
+      },
+    });
+  }
+  for (const item of DEMO_ROLE_PERMISSIONS) {
+    await prisma.rolePermission.upsert({
+      where: { role_id_permission_id: { role_id: item.role_id, permission_id: item.permission_id } },
+      update: {},
+      create: { role_id: item.role_id, permission_id: item.permission_id },
     });
   }
 
