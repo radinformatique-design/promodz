@@ -12,7 +12,7 @@ npx prisma generate
 npx prisma db push
 ```
 
-Le schéma Prisma reste la source de vérité pour les 31 modèles métier existants. Pour les environnements durables, convertir ensuite les changements de schéma en migrations versionnées avec `npx prisma migrate dev --name init` puis déployer avec `npx prisma migrate deploy`.
+Le schéma Prisma reste la source de vérité pour les 34 modèles métier actuels. Pour les environnements durables, convertir ensuite les changements de schéma en migrations versionnées avec `npx prisma migrate dev --name init` puis déployer avec `npx prisma migrate deploy`.
 
 ## 3. Activer les politiques RLS
 Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique, y compris `006` pour la caisse chantier.
