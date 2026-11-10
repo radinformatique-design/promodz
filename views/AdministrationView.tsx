@@ -225,7 +225,7 @@ export const AdministrationView: React.FC = () => {
       telephone: '+213 ',
       poste: '',
       type: 'CHANTIER',
-      role_id: 'role-ct',
+      role_id: roles.find(r => r.type_acces === 'CHANTIER' || r.type_acces === 'HYBRIDE')?.id || '',
       chantiers_assignes: [allChantiers[0]?.id || 'cht-001'],
       auth_user_id: ''
     });
@@ -1731,7 +1731,11 @@ export const AdministrationView: React.FC = () => {
                   <label className="block font-medium text-slate-700 mb-1">Périmètre d'activité *</label>
                   <select
                     value={userFormData.type}
-                    onChange={(e) => setUserFormData({ ...userFormData, type: e.target.value as UserType })}
+                    onChange={(e) => {
+                      const type = e.target.value as UserType;
+                      const compatibleRole = roles.find(r => r.type_acces === type || r.type_acces === 'HYBRIDE');
+                      setUserFormData({ ...userFormData, type, role_id: compatibleRole?.id || '' });
+                    }}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white"
                   >
                     <option value="CENTRAL">Utilisateur Central (Siège)</option>
@@ -1746,7 +1750,7 @@ export const AdministrationView: React.FC = () => {
                     onChange={(e) => setUserFormData({ ...userFormData, role_id: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white"
                   >
-                    {roles.map(r => (
+                    {roles.filter(r => r.type_acces === userFormData.type || r.type_acces === 'HYBRIDE').map(r => (
                       <option key={r.id} value={r.id}>{r.libelle}</option>
                     ))}
                   </select>
