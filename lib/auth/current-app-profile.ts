@@ -25,3 +25,7 @@ export function assignedChantierIds(profile: { affectations: Array<{ chantier_id
 export function isCompanyAdmin(profile: { role: { code: string } }) {
   return profile.role.code === 'ADMINISTRATEUR';
 }
+
+export function hasAnyRole(profile: { role: { code: string } }, codes: string[]) {
+  return codes.includes(profile.role.code);
+}
