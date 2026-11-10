@@ -211,7 +211,7 @@ export const AdministrationView: React.FC = () => {
     telephone: '+213 ',
     poste: '',
     type: 'CHANTIER' as UserType,
-    role_id: 'role-ct',
+    role_id: '',
     chantiers_assignes: [] as string[],
     auth_user_id: ''
   });
@@ -226,7 +226,7 @@ export const AdministrationView: React.FC = () => {
       poste: '',
       type: 'CHANTIER',
       role_id: roles.find(r => r.type_acces === 'CHANTIER' || r.type_acces === 'HYBRIDE')?.id || '',
-      chantiers_assignes: [allChantiers[0]?.id || 'cht-001'],
+      chantiers_assignes: allChantiers[0]?.id ? [allChantiers[0].id] : [],
       auth_user_id: ''
     });
     setIsUserModalOpen(true);
@@ -1681,6 +1681,7 @@ export const AdministrationView: React.FC = () => {
                   type="email"
                   required
                   value={userFormData.email}
+                  disabled={Boolean(editingUser)}
                   onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono"
                 />
