@@ -10,6 +10,7 @@ export async function GET() {
     : (await prisma.chantier.findMany({ where: { entreprise_id: current.profile.entreprise_id }, select: { id: true } })).map(x => x.id);
   const rows = await prisma.auditLog.findMany({
     where: {
+      entreprise_id: current.profile.entreprise_id,
       OR: [
         { chantier_id: { in: chantierIds } },
         ...(isCompanyAdmin(current.profile) ? [{ chantier_id: null }] : []),
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
 
   const row = await prisma.auditLog.create({
     data: {
+      entreprise_id: current.profile.entreprise_id,
       utilisateur_id: current.profile.id,
       chantier_id: chantierId,
       module: String(body.module),
