@@ -22,29 +22,6 @@ import {
   MODULES_LIST
 } from '../data/demoData';
 
-// Simulated password hashes (default password for all demo accounts: "BatiProm@2026")
-const DEFAULT_DEMO_PASSWORD = 'password123';
-const USER_PASSWORDS: Record<string, string> = {
-  'admin@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'rh@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'juridique@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'compta@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'technique@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'materiel@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'commercial@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'appro@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  // Chantiers
-  'conducteur.cheraga@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'metreur.cheraga@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'magasinier.cheraga@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'conducteur.oran@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'metreur.oran@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'magasinier.oran@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'conducteur.constantine@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'metreur.constantine@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'magasinier.constantine@batiprom-dz.com': DEFAULT_DEMO_PASSWORD
-};
-
 export interface VerificationResult {
   allowed: boolean;
   statusCode: 200 | 401 | 403;
@@ -75,51 +52,41 @@ export class AuthService {
   public async login(
     email: string,
     passwordAttempt: string,
-    deviceInfo: string = 'Navigateur Web'
+    _deviceInfo: string = 'Navigateur Web'
   ): Promise<{ success: boolean; user?: Utilisateur; token?: string; error?: string }> {
-    const cleanEmail = email.trim().toLowerCase();
-    const user = this.users.find(u => u.email.toLowerCase() === cleanEmail);
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: passwordAttempt,
+      });
 
-    if (!user) {
-      return { success: false, error: 'Identifiants invalides (email introuvable).' };
+      if (error || !data.session) {
+        return { success: false, error: error?.message || 'Authentification Supabase impossible.' };
+      }
+
+      const response = await fetch('/api/auth/me', { cache: 'no-store' });
+      const profile = await response.json().catch(() => null);
+      if (!response.ok || !profile?.user) {
+        await supabase.auth.signOut();
+        return {
+          success: false,
+          error: profile?.error || 'Compte Auth créé, mais aucun profil BatiProm actif ne lui est associé. Contactez l’administrateur.',
+        };
+      }
+
+      this.currentAuthenticatedUser = profile.user as Utilisateur;
+      this.currentSessionToken = data.session.access_token;
+      this.users = [profile.user as Utilisateur, ...this.users.filter(u => u.id !== profile.user.id)];
+      this.roles = profile.roles || this.roles;
+      this.permissions = profile.permissions || this.permissions;
+      this.rolePermissions = profile.rolePermissions || this.rolePermissions;
+
+      return { success: true, user: profile.user as Utilisateur, token: data.session.access_token };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Erreur de connexion.' };
     }
-
-    if (user.statut === 'DESACTIVE') {
-      return { success: false, error: 'Compte désactivé. Veuillez contacter l’administrateur.' };
-    }
-
-    if (user.statut === 'SUSPENDU') {
-      return { success: false, error: 'Compte temporairement suspendu pour des raisons de sécurité.' };
-    }
-
-    // Vérification mot de passe
-    const expectedPassword = USER_PASSWORDS[cleanEmail] || DEFAULT_DEMO_PASSWORD;
-    if (passwordAttempt !== expectedPassword) {
-      return { success: false, error: 'Mot de passe erroné.' };
-    }
-
-    // Création session sécurisée
-    const token = `jwt_${user.type.toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    const newSession: UserSession = {
-      id: `sess-${Date.now()}`,
-      user_id: user.id,
-      token,
-      ip_address: '197.200.12.94',
-      device_info: deviceInfo,
-      created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 12 * 3600 * 1000).toISOString(), // 12 heures
-      is_revoked: false,
-      last_activity: new Date().toISOString()
-    };
-
-    this.sessions.unshift(newSession);
-    this.currentSessionToken = token;
-    this.currentAuthenticatedUser = user;
-
-    // Mise à jour date dernier accès
-    user.dernier_acces = new Date().toISOString();
-
-    return { success: true, user, token };
   }
 
   public logout(): void {
