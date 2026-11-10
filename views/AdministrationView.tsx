@@ -127,6 +127,7 @@ export const AdministrationView: React.FC = () => {
   // RBAC Matrix local state for configuration & saving
   const [matrixState, setMatrixState] = useState<typeof rolePermissions>(rolePermissions);
   const [matrixSuccessMsg, setMatrixSuccessMsg] = useState<string | null>(null);
+  const [matrixErrorMsg, setMatrixErrorMsg] = useState<string | null>(null);
   const [matrixCategoryFilter, setMatrixCategoryFilter] = useState<'ALL' | 'CHANTIER' | 'GESTION' | 'SYSTEME'>('ALL');
   const [matrixSearchQuery, setMatrixSearchQuery] = useState('');
   const [matrixRoleCategoryFilter, setMatrixRoleCategoryFilter] = useState<'ALL' | 'CENTRAL' | 'CHANTIER'>('ALL');
@@ -404,10 +405,21 @@ export const AdministrationView: React.FC = () => {
     });
   }, [roles, matrixRoleCategoryFilter, matrixRoleFocus]);
 
-  const handleSaveMatrix = () => {
-    saveRbacMatrix(matrixState);
-    setMatrixSuccessMsg('La matrice des permissions RBAC a été enregistrée et déployée avec succès.');
-    setTimeout(() => setMatrixSuccessMsg(null), 3000);
+  const handleSaveMatrix = async () => {
+    setMatrixSuccessMsg(null);
+    setMatrixErrorMsg(null);
+    try {
+      const response = await fetch('/api/admin/rbac', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rolePermissions: matrixState }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Enregistrement RBAC refusé par le serveur.');
+      setMatrixSuccessMsg('La matrice des permissions a été enregistrée.');
+    } catch (error) {
+      setMatrixErrorMsg(error instanceof Error ? error.message : 'Impossible d’enregistrer la matrice RBAC.');
+    }
   };
 
   // Filtering users
@@ -762,7 +774,7 @@ export const AdministrationView: React.FC = () => {
                   Configuration Complète des Habilitations par Rôle et par Module
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-                  Contrôle d'accès strict (Règle N°11) : chaque module dispose de 7 permissions indépendantes (Consulter, Ajouter, Modifier, Supprimer, Valider, Refuser, Exporter). Tout accès non explicitement accordé est systématiquement rejeté par le serveur.
+                  Les rôles sont actuellement des modèles globaux en lecture seule. Leur personnalisation par entreprise sera activée après migration du catalogue RBAC vers un schéma multi-tenant, afin d’éviter qu’une entreprise modifie les droits d’une autre.
                 </p>
               </div>
 
@@ -803,6 +815,11 @@ export const AdministrationView: React.FC = () => {
                   <span>{matrixSuccessMsg}</span>
                 </div>
                 <span className="text-[11px] text-emerald-600 font-mono">Déployé sur l'environnement de production</span>
+              </div>
+            )}
+            {matrixErrorMsg && (
+              <div className="mt-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs font-medium">
+                {matrixErrorMsg}
               </div>
             )}
 
