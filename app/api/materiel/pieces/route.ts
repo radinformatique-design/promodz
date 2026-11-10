@@ -5,7 +5,7 @@ import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole }
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (current.profile.type === 'CENTRAL' && !isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) {
+  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) {
     return NextResponse.json({ error: 'Accès aux pièces réservé au service matériel.' }, { status: 403 });
   }
   const chantierIds = current.profile.type === 'CHANTIER'
