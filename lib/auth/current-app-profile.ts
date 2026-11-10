@@ -10,7 +10,7 @@ export async function getCurrentAppProfile() {
     where: { auth_user_id: user.id },
     include: {
       role: { include: { permissions: { include: { permission: true } } } },
-      affectations: { where: { est_actif: true } },
+      affectations: { where: { est_actif: true, OR: [{ date_fin: null }, { date_fin: { gte: new Date() } }] } },
     },
   });
 
