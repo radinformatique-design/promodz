@@ -97,6 +97,16 @@ export async function PATCH(request: Request) {
     include: { role: true },
   });
   if (!target) return NextResponse.json({ error: 'Utilisateur introuvable dans votre entreprise.' }, { status: 404 });
+  const nextRoleCode = allowed.role_id
+    ? (await prisma.role.findUnique({ where: { id: String(allowed.role_id) }, select: { code: true } }))?.code
+    : target.role.code;
+  const nextStatus = String(allowed.statut || target.statut);
+  if (target.role.code === 'ADMINISTRATEUR' && (nextRoleCode !== 'ADMINISTRATEUR' || nextStatus !== 'ACTIF')) {
+    const activeAdmins = await prisma.utilisateur.count({
+      where: { entreprise_id: current.profile.entreprise_id, statut: 'ACTIF', role: { code: 'ADMINISTRATEUR' } },
+    });
+    if (activeAdmins <= 1) return NextResponse.json({ error: 'Impossible de désactiver ou rétrograder le dernier administrateur actif.' }, { status: 409 });
+  }
 
   const allowed: Record<string, unknown> = {};
   for (const key of ['nom', 'prenom', 'email', 'telephone', 'poste', 'type', 'role_id', 'statut', 'photo_url']) {
