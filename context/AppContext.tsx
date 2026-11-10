@@ -643,6 +643,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const res = await authService.login(email, password, deviceInfo);
     if (res.success && res.user) {
       setCurrentUser(res.user);
+      setUtilisateurs(authService.getAllUsers());
+      setRoles(authService.getAllRoles());
+      setPermissions(authService.getAllPermissions());
+      setRolePermissions(authService.getRolePermissions());
       await loadApplicationData();
       if (res.user.type === 'CHANTIER') {
         setSelectedChantierId(res.user.chantiers_assignes[0] || 'ALL');
@@ -681,6 +685,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const switchUserPersona = (user: Utilisateur) => {
+    // L'impersonation UI est réservée au développement ; en production,
+    // toute identité doit provenir d'une session Supabase Auth réelle.
+    if (process.env.NODE_ENV === 'production') return;
     authService.setAuthenticatedUser(user);
     setCurrentUser(user);
     setSecurityViolation(null);
