@@ -1,6 +1,6 @@
 -- 006: Politiques RLS de la caisse de fonds de roulement par chantier.
--- Les API Prisma conservent leurs contrôles applicatifs : Prisma direct n'hérite pas
--- automatiquement du JWT Supabase de l'utilisateur connecté.
+-- Prisma direct ne reprend pas automatiquement le JWT Supabase : les Route Handlers
+-- doivent conserver leurs propres contrôles d'identité, rôle et périmètre.
 
 CREATE OR REPLACE FUNCTION public.is_company_accountant()
 RETURNS boolean
@@ -8,7 +8,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $fn$
   SELECT EXISTS (
     SELECT 1
     FROM public.utilisateurs u
@@ -18,7 +18,7 @@ AS $$
       AND u.entreprise_id = public.current_company_id()
       AND r.code IN ('ADMINISTRATEUR', 'RESPONSABLE_COMPTABILITE')
   );
-$$;
+$fn$;
 
 CREATE OR REPLACE FUNCTION public.has_app_permission(target_module text, target_action text)
 RETURNS boolean
@@ -26,7 +26,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $fn$
   SELECT EXISTS (
     SELECT 1
     FROM public.utilisateurs u
@@ -36,7 +36,7 @@ AS $
       AND p.module = target_module
       AND p.action = target_action
   );
-$;
+$fn$;
 
 ALTER TABLE public.comptabilite_caisses_chantier ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comptabilite_mouvements_caisse ENABLE ROW LEVEL SECURITY;
@@ -63,6 +63,7 @@ CREATE POLICY caisse_manage_central ON public.comptabilite_caisses_chantier
       WHERE c.id = comptabilite_caisses_chantier.chantier_id
         AND c.entreprise_id = public.current_company_id()
         AND public.is_company_accountant()
+        AND public.has_app_permission('CAISSE', 'GERER_PLAFOND')
     )
   )
   WITH CHECK (
@@ -71,6 +72,7 @@ CREATE POLICY caisse_manage_central ON public.comptabilite_caisses_chantier
       WHERE c.id = comptabilite_caisses_chantier.chantier_id
         AND c.entreprise_id = public.current_company_id()
         AND public.is_company_accountant()
+        AND public.has_app_permission('CAISSE', 'GERER_PLAFOND')
     )
   );
 
@@ -101,10 +103,14 @@ CREATE POLICY mouvements_caisse_insert_scope ON public.comptabilite_mouvements_c
         AND c.entreprise_id = public.current_company_id()
         AND public.can_access_chantier(c.id)
         AND (
-          comptabilite_mouvements_caisse.type = 'SORTIE'
+          (
+            comptabilite_mouvements_caisse.type = 'SORTIE'
+            AND public.has_app_permission('CAISSE', 'SORTIR')
+          )
           OR (
             comptabilite_mouvements_caisse.type = 'APPROVISIONNEMENT'
             AND public.is_company_accountant()
+            AND public.has_app_permission('CAISSE', 'APPROVISIONNER')
           )
         )
     )
@@ -130,6 +136,7 @@ CREATE POLICY demandes_caisse_insert_scope ON public.comptabilite_demandes_caiss
   WITH CHECK (
     demandeur_id = public.current_app_user_id()
     AND statut = 'EN_ATTENTE'
+    AND public.has_app_permission('CAISSE', 'DEMANDER')
     AND EXISTS (
       SELECT 1
       FROM public.comptabilite_caisses_chantier cc
@@ -146,6 +153,7 @@ CREATE POLICY demandes_caisse_update_central ON public.comptabilite_demandes_cai
   USING (
     statut = 'EN_ATTENTE'
     AND public.is_company_accountant()
+    AND public.has_app_permission('CAISSE', 'TRAITER_DEMANDE')
     AND EXISTS (
       SELECT 1
       FROM public.comptabilite_caisses_chantier cc
@@ -156,5 +164,6 @@ CREATE POLICY demandes_caisse_update_central ON public.comptabilite_demandes_cai
   )
   WITH CHECK (
     public.is_company_accountant()
+    AND public.has_app_permission('CAISSE', 'TRAITER_DEMANDE')
     AND traiteur_id = public.current_app_user_id()
   );
