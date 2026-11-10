@@ -90,12 +90,13 @@ export const CaisseView: React.FC = () => {
   }, [currentUser, allChantiers]);
 
   useEffect(() => {
+    if (cashChantierId === 'ALL' && currentUser?.type === 'CENTRAL') return;
     if (cashChantierId && availableChantiers.some((chantier) => chantier.id === cashChantierId)) return;
     const initial = selectedChantierId !== 'ALL' && availableChantiers.some((chantier) => chantier.id === selectedChantierId)
       ? selectedChantierId
-      : availableChantiers[0]?.id || '';
+      : currentUser?.type === 'CENTRAL' ? 'ALL' : availableChantiers[0]?.id || '';
     setCashChantierId(initial);
-  }, [cashChantierId, selectedChantierId, availableChantiers]);
+  }, [cashChantierId, selectedChantierId, availableChantiers, currentUser?.type]);
 
   const loadFunds = async () => {
     setLoading(true);
@@ -118,10 +119,13 @@ export const CaisseView: React.FC = () => {
 
   const visibleFunds = useMemo(() => {
     if (!cashChantierId) return [];
-    return funds.filter((fund) => fund.chantier.id === cashChantierId);
-  }, [funds, cashChantierId]);
+    const allowedIds = new Set(availableChantiers.map((chantier) => chantier.id));
+    return cashChantierId === 'ALL'
+      ? funds.filter((fund) => allowedIds.has(fund.chantier.id))
+      : funds.filter((fund) => fund.chantier.id === cashChantierId);
+  }, [funds, cashChantierId, availableChantiers]);
 
-  const selectedFund = visibleFunds[0] || null;
+  const selectedFund = cashChantierId === 'ALL' ? null : (visibleFunds[0] || null);
   const totalCeiling = visibleFunds.reduce((sum, fund) => sum + Number(fund.plafond || 0), 0);
   const totalBalance = visibleFunds.reduce((sum, fund) => sum + Number(fund.solde || 0), 0);
   const pendingRequests = visibleFunds.flatMap((fund) =>
@@ -227,12 +231,13 @@ export const CaisseView: React.FC = () => {
         <Building2 className="h-4 w-4 text-slate-500" />
         <label className="text-xs font-semibold text-slate-600">Chantier affiché</label>
         <select value={cashChantierId} onChange={(e) => setCashChantierId(e.target.value)} className="min-w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+          {currentUser?.type === 'CENTRAL' && <option value="ALL">Tous les chantiers</option>}
           {availableChantiers.map((chantier) => <option key={chantier.id} value={chantier.id}>{chantier.code_chantier} — {chantier.nom_projet}</option>)}
         </select>
         <span className="ml-auto text-xs text-slate-500">{visibleFunds.length} caisse(s) configurée(s)</span>
       </div>
 
-      {canManageCeiling && (
+      {canManageCeiling && selectedFund && (
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="font-bold text-slate-900">Plafond de la caisse</h2>
           <p className="mt-1 text-xs text-slate-500">Le siège définit le plafond initial ou le modifie. Le nouveau plafond ne peut pas être inférieur au solde actuel.</p>
@@ -257,10 +262,14 @@ export const CaisseView: React.FC = () => {
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <Metric title="Plafond autorisé" value={money(selectedFund?.plafond || totalCeiling)} icon={<Wallet className="h-5 w-5" />} />
-            <Metric title="Solde disponible" value={money(selectedFund?.solde || totalBalance)} icon={<ArrowDownLeft className="h-5 w-5" />} />
-            <Metric title="Montant consommé" value={money(Number(selectedFund?.plafond || totalCeiling) - Number(selectedFund?.solde || totalBalance))} icon={<ArrowUpRight className="h-5 w-5" />} />
+            <Metric title="Plafond autorisé" value={money(cashChantierId === 'ALL' ? totalCeiling : (selectedFund?.plafond || 0))} icon={<Wallet className="h-5 w-5" />} />
+            <Metric title="Solde disponible" value={money(cashChantierId === 'ALL' ? totalBalance : (selectedFund?.solde || 0))} icon={<ArrowDownLeft className="h-5 w-5" />} />
+            <Metric title="Montant consommé" value={money(cashChantierId === 'ALL' ? totalCeiling - totalBalance : Number(selectedFund?.plafond || 0) - Number(selectedFund?.solde || 0))} icon={<ArrowUpRight className="h-5 w-5" />} />
           </div>
+
+          {cashChantierId === 'ALL' && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Vue consolidée : choisissez un chantier précis dans la liste pour modifier son plafond, enregistrer un mouvement ou demander un réapprovisionnement. Les demandes en attente et les historiques restent consultables sur l’ensemble des chantiers.</div>
+          )}
 
           <div className="grid gap-5 xl:grid-cols-2">
             {(canExit || canSupply) && selectedFund && (
