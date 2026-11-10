@@ -5,6 +5,7 @@ import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole }
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
+  if (current.profile.type === 'CENTRAL' && !isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_COMPTABILITE','RESPONSABLE_APPROVISIONNEMENTS'])) return NextResponse.json({ error: 'Accès aux factures réservé aux services comptabilité et approvisionnements.' }, { status: 403 });
   const ids = current.profile.type === 'CHANTIER'
     ? assignedChantierIds(current.profile)
     : (await prisma.chantier.findMany({ where: { entreprise_id: current.profile.entreprise_id }, select: { id: true } })).map(x => x.id);
