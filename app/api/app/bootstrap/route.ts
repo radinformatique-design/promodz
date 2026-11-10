@@ -17,7 +17,7 @@ export async function GET() {
       })).map((item) => item.id);
 
   try {
-    const [entreprise, parametresGeneraux, chantiers, employes] = await Promise.all([
+    const [entreprise, parametresGeneraux, chantiers, employes, comptesBancaires] = await Promise.all([
       prisma.entreprise.findUnique({ where: { id: profile.entreprise_id } }),
       prisma.parametresGeneraux.findFirst({ where: { entreprise_id: profile.entreprise_id } }),
       prisma.chantier.findMany({
@@ -30,9 +30,16 @@ export async function GET() {
         include: { chantierActuel: true },
         orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
       }),
+      prisma.compteBancaire.findMany({
+        where: {
+          entreprise_id: profile.entreprise_id,
+          OR: [{ chantier_dedie_id: null }, { chantier_dedie_id: { in: chantierIds } }],
+        },
+        orderBy: [{ is_compte_principal: 'desc' }, { nom_banque: 'asc' }],
+      }),
     ]);
 
-    return NextResponse.json({ entreprise, parametresGeneraux, chantiers, employes });
+    return NextResponse.json({ entreprise, parametresGeneraux, chantiers, employes, comptesBancaires });
   } catch (error) {
     console.error('[GET /api/app/bootstrap]', error);
     return NextResponse.json({ error: 'Impossible de charger les données initiales depuis PostgreSQL.' }, { status: 500 });
