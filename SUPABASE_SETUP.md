@@ -37,13 +37,26 @@ Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_use
 
 
 ## API métier ajoutées sur cette branche
-- `GET/POST/PATCH/DELETE /api/approvisionnements/fournisseurs` : fournisseurs limités à l'entreprise.
+- `GET/POST/PATCH/DELETE /api/approvisionnements/fournisseurs` : fournisseurs limités à l'entreprise, modifiables par l'administrateur ou le responsable approvisionnements.
 - `GET/POST/PATCH /api/approvisionnements/demandes` : demandes d'achat et notification des administrateurs centraux.
-- `GET/POST/PATCH /api/approvisionnements/commandes` : bons de commande ; émission réservée à l'administrateur central.
+- `GET/POST/PATCH /api/approvisionnements/commandes` : bons de commande ; émission réservée à l'administrateur ou au responsable approvisionnements.
 - `GET/POST /api/approvisionnements/receptions` : réceptions rattachées à un bon de commande et à un chantier accessible.
 - `GET/POST/PATCH /api/approvisionnements/factures` : factures fournisseurs et statut de règlement.
-- `GET/PUT /api/comptabilite/budgets` : budgets par chantier et exercice, modifiables au siège.
+- `GET/PUT /api/comptabilite/budgets` : budgets par chantier et exercice, modifiables par l'administrateur ou le responsable comptabilité.
+- `GET/POST/PATCH/DELETE /api/rh/employes` : dossiers du personnel, écriture réservée à l'administrateur ou au responsable RH.
+- `GET/POST /api/rh/pointages` et `GET/POST/PATCH /api/rh/conges` : saisie chantier et validation RH selon le rôle.
 - `GET/PATCH /api/notifications` : notifications du seul utilisateur connecté.
 - `GET/POST /api/audit-logs` : journal d'audit lié à l'utilisateur courant.
 
 Les routes contrôlent l'identité Supabase et filtrent les enregistrements Prisma par entreprise et/ou chantier. Elles doivent encore faire l'objet de tests d'intégration sur une base de test avant mise en production. Le suivi des paiements de factures reste un statut simple ; aucun échéancier ni historique détaillé de règlements n'est encore modélisé.
+
+
+### Rôles centraux autorisés par module
+- Approvisionnements : `RESPONSABLE_APPROVISIONNEMENTS` ou `ADMINISTRATEUR`.
+- Comptabilité / budgets / factures : `RESPONSABLE_COMPTABILITE` ou `ADMINISTRATEUR`.
+- Parc matériel : `RESPONSABLE_MATERIEL` ou `ADMINISTRATEUR`.
+- RH : `RESPONSABLE_RH` ou `ADMINISTRATEUR`; les pointages et demandes de congé peuvent être saisis par le conducteur de travaux de son chantier.
+- Commercial : `RESPONSABLE_COMMERCIAL` ou `ADMINISTRATEUR`.
+- Juridique : `RESPONSABLE_JURIDIQUE` ou `ADMINISTRATEUR`.
+
+Les rôles et permissions sont des modèles système globaux. Les administrateurs d'entreprise ne peuvent pas encore modifier le catalogue partagé. Les droits sont appliqués dans les API couvertes et les politiques RLS correspondantes ; la migration du catalogue RBAC vers des rôles personnalisés par entreprise reste une étape distincte.
