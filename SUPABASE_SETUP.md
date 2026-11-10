@@ -23,7 +23,8 @@ Après création des tables, exécuter le SQL de `supabase/migrations/2026111000
 1. Dans **Authentication → Users**, créer le compte administrateur avec son adresse e-mail.
 2. Ouvrir `supabase/bootstrap-first-admin.sql`, remplacer les champs `REPLACE_*` par les informations réelles de l'entreprise et l'UUID Auth du compte.
 3. Exécuter le script une seule fois dans le SQL Editor Supabase. Il vérifie l'existence de l'UUID Auth et la correspondance de l'e-mail, puis crée l'entreprise, le rôle administrateur, le profil et les paramètres DZD.
-4. Ne pas créer d'utilisateur de démonstration automatiquement en production.
+4. Exécuter ensuite `supabase/bootstrap-system-rbac.sql` pour créer les 10 rôles métier complémentaires, les 98 permissions et leur matrice initiale. Le rôle administrateur est présent et dispose de toutes les permissions.
+5. Ne pas lancer `npm run prisma:seed` en production : ce seed facultatif insère des données de démonstration.
 
 
 ## 5. Connexion Prisma
