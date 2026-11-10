@@ -8,8 +8,6 @@ import {
   isCompanyAdmin,
 } from '@/lib/auth/current-app-profile';
 
-export const dynamic = 'force-dynamic';
-
 const isCentralFinance = (profile: { type: string; role: { code: string } }) =>
   profile.type === 'CENTRAL' &&
   (isCompanyAdmin(profile as any) || hasAnyRole(profile as any, ['RESPONSABLE_COMPTABILITE']));
