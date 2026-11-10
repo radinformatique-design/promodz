@@ -79,8 +79,6 @@ export async function POST(request: Request) {
         garage_nom: body.garage_nom || null,
         piece_rechange: body.piece_rechange_utilisee || null,
         facture_ref: body.facture_ref || null,
-        technicien: body.technicien || null,
-        observations: body.observations || null,
       },
       include: { materiel: { select: { id: true, code_parc: true, marque: true, modele: true } } },
     });
