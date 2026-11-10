@@ -95,3 +95,9 @@ Après mise à jour de la branche, exécuter à nouveau `npx prisma db push`, pu
 - Le conducteur peut envoyer une demande de réapprovisionnement (`CAISSE / DEMANDER`).
 - Le responsable comptabilité peut approuver/refuser (`TRAITER_DEMANDE`) et approvisionner (`APPROVISIONNER`).
 - Chaque sortie et demande génère une notification vers les responsables centraux concernés. Le solde est recalculé à partir des mouvements ; les transactions de sortie verrouillent la ligne de caisse pour éviter les dépassements concurrents.
+
+ 
+### Invitations de nouveaux utilisateurs
+Pour utiliser le bouton **Créer un utilisateur** dans Administration, configurer `SUPABASE_AUTH_ADMIN_KEY` dans l'environnement serveur de l'application avec une clé Supabase privée autorisée à gérer Auth. Cette variable doit rester strictement côté serveur : ne jamais la préfixer par `NEXT_PUBLIC_`, ne jamais la placer dans le code client et ne jamais la committer avec une vraie valeur.
+
+L'API `POST /api/admin/users/invite` vérifie d'abord la session et le rôle administrateur, envoie une invitation par e-mail via Supabase Auth, puis crée le profil métier et ses affectations. Le lien d'invitation passe par `/auth/callback` et dirige l'utilisateur vers la définition de son mot de passe. Si la création du profil échoue après l'invitation, l'API tente de supprimer le compte Auth créé pour éviter un compte orphelin.
