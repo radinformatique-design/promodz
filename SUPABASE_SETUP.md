@@ -15,17 +15,17 @@ npx prisma db push
 Le schéma Prisma reste la source de vérité pour les 31 modèles métier existants. Pour les environnements durables, convertir ensuite les changements de schéma en migrations versionnées avec `npx prisma migrate dev --name init` puis déployer avec `npx prisma migrate deploy`.
 
 ## 3. Activer les politiques RLS
-Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique : `001`, `002`, `003`, `004`, puis `005`.
+Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique, y compris `006` pour la caisse chantier.
 
 - `001` : Auth, profils, entreprise et affectations.
 - `002` : accès central aux chantiers de l'entreprise.
 - `003` : rattachement des fournisseurs à l'entreprise.
 - `004` : politiques métier pour achats, RH, matériel, comptabilité, commercial, juridique, notifications, documents et audit.
-- `005` : clés entreprise explicites pour les données qui peuvent ne pas être rattachées à un chantier.
+- `005` : clés entreprise explicites pour les données qui peuvent ne pas être rattachées à un chantier.\n- `006` : politiques RLS des caisses chantier, mouvements, demandes de réapprovisionnement et droits dédiés.
 
 Les migrations `003` et `005` s'arrêtent volontairement si elles trouvent des lignes sans entreprise. La base cible étant neuve, ce contrôle doit réussir après `prisma db push`. Sur une base déjà alimentée, il faut d'abord attribuer les bons `entreprise_id` aux lignes concernées.
 
-Les politiques couvrent les 31 tables actuelles du schéma. Cela ne remplace pas les contrôles des Route Handlers Prisma : une connexion Prisma directe ne reprend pas automatiquement le JWT Supabase et contourne donc le RLS de la session. Avant la production, tester les deux voies (Supabase/PostgREST et API Prisma) avec au moins deux entreprises et plusieurs rôles/chantiers.
+Les politiques couvrent les tables métier présentes dans les migrations, y compris les trois nouvelles tables de caisse (le schéma Prisma comporte maintenant 34 modèles). Cela ne remplace pas les contrôles des Route Handlers Prisma : une connexion Prisma directe ne reprend pas automatiquement le JWT Supabase et contourne donc le RLS de la session. Avant la production, tester les deux voies (Supabase/PostgREST et API Prisma) avec au moins deux entreprises et plusieurs rôles/chantiers.
 
 ## 4. Créer le premier administrateur
 1. Dans **Authentication → Users**, créer le compte administrateur avec son adresse e-mail.
@@ -68,3 +68,21 @@ Les routes contrôlent l'identité Supabase et filtrent les enregistrements Pris
 - Juridique : `RESPONSABLE_JURIDIQUE` ou `ADMINISTRATEUR`.
 
 Les rôles et permissions sont des modèles système globaux. Les administrateurs d'entreprise ne peuvent pas encore modifier le catalogue partagé. Les droits sont appliqués dans les API couvertes et les politiques RLS correspondantes ; la migration du catalogue RBAC vers des rôles personnalisés par entreprise reste une étape distincte.
+
+
+## Caisse de fonds de roulement par chantier
+
+Le modèle ajoute une caisse par chantier avec un plafond défini par le siège. Le solde est calculé à partir des mouvements, et non saisi manuellement :
+- `APPROVISIONNEMENT` augmente le solde ; réservé au siège / comptabilité.
+- `SORTIE` diminue le solde ; réservée aux utilisateurs chantier disposant de la permission `CAISSE / SORTIR`.
+- Le solde ne peut pas devenir négatif ni dépasser le plafond.
+- Chaque sortie déclenche une notification vers les administrateurs centraux et le responsable comptabilité.
+- Une demande de réapprovisionnement peut être émise depuis le chantier ; le siège peut l'approuver ou la refuser. Une approbation crée le mouvement d'approvisionnement dans la même transaction PostgreSQL.
+
+### API caisse
+- `GET /api/caisse` : caisses visibles, solde calculé, derniers mouvements et demandes.
+- `PUT /api/caisse` : création ou modification du plafond par le siège habilité.
+- `POST /api/caisse` : sortie ou approvisionnement, avec contrôle de solde et plafond.
+- `GET/POST/PATCH /api/caisse/demandes` : consultation, demande et décision du siège.
+
+Après mise à jour de la branche, exécuter à nouveau `npx prisma db push`, puis appliquer la migration `202611100006_cash_fund_rls.sql`. Si `bootstrap-system-rbac.sql` a déjà été exécuté, le relancer : les nouvelles permissions CAISSE sont insérées sans supprimer les permissions existantes.
