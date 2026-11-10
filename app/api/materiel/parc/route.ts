@@ -15,7 +15,7 @@ export async function GET() {
 
   try {
     const materiels = await prisma.materielEngin.findMany({
-      where: { OR: [{ chantier_actuel_id: null }, { chantier_actuel_id: { in: chantierIds } }] },
+      where: { entreprise_id: current.profile.entreprise_id, OR: [{ chantier_actuel_id: null }, { chantier_actuel_id: { in: chantierIds } }] },
       include: { chantierActuel: true, entretiens: true, piecesRemplacables: true },
       orderBy: { code_parc: 'asc' },
     });
@@ -42,6 +42,7 @@ export async function POST(req: Request) {
     }
     const nouveauMateriel = await prisma.materielEngin.create({
       data: {
+        entreprise_id: current.profile.entreprise_id,
         code_parc: body.num_interne,
         type_engin: body.categorie || 'VEHICULE_LEGER',
         marque: body.marque,
