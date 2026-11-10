@@ -16,7 +16,7 @@ function canRecord(profile: { type: string; role: { code: string } }) {
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (current.profile.type === 'CENTRAL' && !canRecord(current.profile)) return NextResponse.json({ error: 'Accès aux pointages réservé au service RH.' }, { status: 403 });
+  if (!canRecord(current.profile)) return NextResponse.json({ error: 'Accès aux pointages réservé aux conducteurs et au service RH.' }, { status: 403 });
   const ids = await scopeIds(current.profile);
   const rows = await prisma.pointage.findMany({
     where: { chantier_id: { in: ids } },
