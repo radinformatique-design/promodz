@@ -20,6 +20,24 @@ AS $$
   );
 $$;
 
+CREATE OR REPLACE FUNCTION public.has_app_permission(target_module text, target_action text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.utilisateurs u
+    JOIN public.role_permissions rp ON rp.role_id = u.role_id
+    JOIN public.permissions p ON p.id = rp.permission_id
+    WHERE u.id = public.current_app_user_id()
+      AND p.module = target_module
+      AND p.action = target_action
+  );
+$;
+
 ALTER TABLE public.comptabilite_caisses_chantier ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comptabilite_mouvements_caisse ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comptabilite_demandes_caisse ENABLE ROW LEVEL SECURITY;
