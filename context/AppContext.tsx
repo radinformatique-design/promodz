@@ -2994,252 +2994,233 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // MODULE MATÉRIEL ET PARC AUTOMOBILE
   // ==========================================
 
-  const ajouterVehicule = (data: Omit<Vehicule, 'id' | 'created_at'>): Vehicule => {
-    const newVeh: Vehicule = {
-      ...data,
-      id: `veh-${Date.now()}`,
-      created_at: new Date().toISOString()
-    };
-    setVehicules(prev => [...prev, newVeh]);
-    logOperation('CREATION', 'MATERIEL', 'vehicules', newVeh.id, `Ajout véhicule/engin : ${newVeh.marque} ${newVeh.modele} (${newVeh.num_interne})`);
-    return newVeh;
-  };
-
-  const modifierVehicule = (id: string, updates: Partial<Vehicule>): Vehicule | null => {
-    let updatedVeh: Vehicule | null = null;
-    setVehicules(prev => prev.map(v => {
-      if (v.id === id) {
-        updatedVeh = { ...v, ...updates };
-        return updatedVeh;
-      }
-      return v;
-    }));
-    if (updatedVeh) {
-      logOperation('MODIFICATION', 'MATERIEL', 'vehicules', id, `Mise à jour véhicule/engin ${(updatedVeh as Vehicule).num_interne}`);
+  const persistMaterialMutation = async (
+    url: string,
+    method: 'POST' | 'PATCH' | 'DELETE',
+    body?: unknown
+  ) => {
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Opération matériel refusée.');
+      await loadApplicationData();
+      return result;
+    } catch (error) {
+      console.error('[BatiProm] Opération matériel non persistée :', error);
+      if (typeof window !== 'undefined') window.alert(error instanceof Error ? error.message : 'Opération matériel impossible.');
+      return null;
     }
-    return updatedVeh;
   };
 
-  const supprimerVehicule = (id: string): boolean => {
-    const v = vehicules.find(item => item.id === id);
-    if (!v) return false;
-    setVehicules(prev => prev.filter(item => item.id !== id));
-    logOperation('SUPPRESSION', 'MATERIEL', 'vehicules', id, `Suppression matériel ${v.num_interne} (${v.marque} ${v.modele})`);
+  const ajouterVehicule = async (data: Omit<Vehicule, 'id' | 'created_at'>): Promise<Vehicule | null> => {
+    const created = await persistMaterialMutation('/api/materiel/parc', 'POST', data);
+    if (!created) return null;
+    logOperation('CREATION', 'MATERIEL', 'materiel_engins', created.id, `Ajout véhicule/engin : ${created.marque} ${created.modele} (${created.code_parc})`);
+    return created as Vehicule;
+  };
+
+  const modifierVehicule = async (id: string, updates: Partial<Vehicule>): Promise<Vehicule | null> => {
+    const updated = await persistMaterialMutation('/api/materiel/parc', 'PATCH', { id, ...updates });
+    if (!updated) return null;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_engins', id, `Mise à jour véhicule/engin ${updated.code_parc}`);
+    return updated as Vehicule;
+  };
+
+  const supprimerVehicule = async (id: string): Promise<boolean> => {
+    const vehicle = vehicules.find(item => item.id === id);
+    const result = await persistMaterialMutation(`/api/materiel/parc?id=${encodeURIComponent(id)}`, 'DELETE');
+    if (!result) return false;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_engins', id, `Désactivation matériel ${vehicle?.num_interne || id}`);
     return true;
   };
 
-  const affecterVehiculeChantier = (
-    vehiculeId: string, 
-    chantierId: string, 
-    chantierNom: string, 
-    conducteurNom: string, 
-    motif?: string, 
+  const affecterVehiculeChantier = async (
+    vehiculeId: string,
+    chantierId: string,
+    chantierNom: string,
+    conducteurNom: string,
+    motif?: string,
     bonTransfertRef?: string
-  ): Vehicule | null => {
-    const v = vehicules.find(item => item.id === vehiculeId);
-    if (!v) return null;
-
-    const nouvelleAffectation = {
+  ): Promise<Vehicule | null> => {
+    const vehicle = vehicules.find(item => item.id === vehiculeId);
+    if (!vehicle) return null;
+    const date = new Date().toISOString().split('T')[0];
+    const history = (vehicle.historique_affectations || []).map(item =>
+      !item.date_fin ? { ...item, date_fin: date } : item
+    );
+    const newAssignment = {
       id: `aff-${Date.now()}`,
       chantier_id: chantierId,
       chantier_nom: chantierNom,
       conducteur_nom: conducteurNom,
-      date_debut: new Date().toISOString().split('T')[0],
+      date_debut: date,
       motif: motif || 'Nouvelle affectation opérationnelle',
-      bon_transfert_ref: bonTransfertRef || `BT-${Date.now().toString().slice(-4)}`
+      bon_transfert_ref: bonTransfertRef || `BT-${Date.now().toString().slice(-4)}`,
     };
-
-    // Clôturer l'ancienne affectation si existante
-    const historique = (v.historique_affectations || []).map(aff => {
-      if (!aff.date_fin) {
-        return { ...aff, date_fin: new Date().toISOString().split('T')[0] };
-      }
-      return aff;
-    });
-
-    const updated: Vehicule = {
-      ...v,
+    const updated = await persistMaterialMutation('/api/materiel/parc', 'PATCH', {
+      id: vehiculeId,
       chantier_id: chantierId,
       conducteur_nom: conducteurNom,
+      historique_affectations: [newAssignment, ...history],
       statut: 'ACTIF',
-      historique_affectations: [nouvelleAffectation, ...historique]
-    };
-
-    setVehicules(prev => prev.map(item => item.id === vehiculeId ? updated : item));
-
-    // Notification systématique : Direction Générale pour validation, Parc Matériel pour information
-    const vehiculeNom = `${v.marque} ${v.modele}`;
-    notifierDemandeChantier({
-      titre: `Mouvement de matériel : ${v.num_interne} - ${vehiculeNom}`,
-      message: `Affectation et transfert de l'engin ${v.num_interne} (${vehiculeNom}) vers le chantier "${chantierNom}". Conducteur désigné : ${conducteurNom}. Motif : ${motif || 'Nécessité de chantier'}.`,
-      module: 'MATERIEL',
-      chantierId: chantierId,
-      chantierNom: chantierNom,
-      entiteType: 'MATERIEL',
-      entiteId: v.id,
-      lienAction: '/materiel',
-      servicesCentraux: [
-        { id: 'user-materiel', role: 'RESPONSABLE_MATERIEL', nom: 'Samir Taleb (Gestion du Parc Matériel)' }
-      ]
     });
-
-    logOperation('TRANSFERT_MATERIEL', 'MATERIEL', 'vehicules', vehiculeId, `Déplacement du matériel ${v.num_interne} vers chantier ${chantierNom} (Chauffeur: ${conducteurNom})`);
-    return updated;
+    if (!updated) return null;
+    logOperation('TRANSFERT_MATERIEL', 'MATERIEL', 'materiel_engins', vehiculeId, `Transfert ${vehicle.num_interne} vers ${chantierNom} (Conducteur : ${conducteurNom})`, chantierId);
+    return updated as Vehicule;
   };
 
-  const mettreAJourCompteur = (
-    vehiculeId: string, 
-    nouveauKm?: number, 
+  const mettreAJourCompteur = async (
+    vehiculeId: string,
+    nouveauKm?: number,
     nouvellesHeures?: number
-  ): Vehicule | null => {
-    let updatedVeh: Vehicule | null = null;
-    setVehicules(prev => prev.map(v => {
-      if (v.id === vehiculeId) {
-        updatedVeh = {
-          ...v,
-          kilometrage: nouveauKm !== undefined ? nouveauKm : v.kilometrage,
-          heures_fonctionnement: nouvellesHeures !== undefined ? nouvellesHeures : v.heures_fonctionnement
-        };
-        return updatedVeh;
-      }
-      return v;
-    }));
-    if (updatedVeh) {
-      logOperation('MODIFICATION', 'MATERIEL', 'vehicules', vehiculeId, `Relevé compteur pour ${(updatedVeh as Vehicule).num_interne} : Km=${nouveauKm ?? 'N/A'}, Heures=${nouvellesHeures ?? 'N/A'}`);
-    }
-    return updatedVeh;
+  ): Promise<Vehicule | null> => {
+    const vehicle = vehicules.find(item => item.id === vehiculeId);
+    if (!vehicle) return null;
+    const updated = await persistMaterialMutation('/api/materiel/parc', 'PATCH', {
+      id: vehiculeId,
+      kilometrage: nouveauKm !== undefined ? nouveauKm : vehicle.kilometrage,
+      heures_fonctionnement: nouvellesHeures !== undefined ? nouvellesHeures : vehicle.heures_fonctionnement,
+    });
+    if (!updated) return null;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_engins', vehiculeId, `Relevé compteur ${vehicle.num_interne} : Km=${nouveauKm ?? 'N/A'}, Heures=${nouvellesHeures ?? 'N/A'}`);
+    return updated as Vehicule;
   };
 
-  const enregistrerEntretien = (data: Omit<Entretien, 'id' | 'created_at'>): Entretien => {
-    const newEnt: Entretien = {
-      ...data,
-      id: `ent-${Date.now()}`,
-      created_at: new Date().toISOString()
-    };
-    setEntretiens(prev => [newEnt, ...prev]);
-
-    // Si c'est une vidange ou contrôle, recalculer les prochaines échéances sur le véhicule
-    setVehicules(prev => prev.map(v => {
-      if (v.id === data.vehicule_id) {
-        const maj: Partial<Vehicule> = {};
-        if (data.type === 'VIDANGE') {
-          maj.vidange_derniere_date = data.date;
-          maj.vidange_dernier_km = data.kilometrage_entretien;
-          maj.vidange_dernieres_heures = data.heures_entretien;
-          // Prochaine date + 6 mois
-          const nextDate = new Date(data.date);
-          nextDate.setMonth(nextDate.getMonth() + 6);
-          maj.date_prochaine_vidange = nextDate.toISOString().split('T')[0];
-          if (v.vidange_intervalle_km) {
-            maj.km_prochaine_vidange = data.kilometrage_entretien + v.vidange_intervalle_km;
-          }
-          if (v.vidange_intervalle_heures) {
-            maj.heures_prochaine_vidange = data.heures_entretien + v.vidange_intervalle_heures;
-          }
-        } else if (data.type === 'CONTROLE_TECHNIQUE') {
-          maj.ct_date_dernier = data.date;
-          const nextCT = new Date(data.date);
-          nextCT.setFullYear(nextCT.getFullYear() + 1);
-          maj.date_prochain_controle_technique = nextCT.toISOString().split('T')[0];
-          maj.ct_statut = 'VALIDE';
-        } else if (data.type === 'REPARATION' || data.type === 'PANNE') {
-          maj.statut = data.statut_operation === 'EFFECTUE' ? 'ACTIF' : 'EN_REPARATION';
-        }
-        return { ...v, ...maj };
-      }
-      return v;
-    }));
-
-    logOperation('CREATION', 'MATERIEL', 'entretiens', newEnt.id, `Entretien ${data.type} pour véhicule ${data.vehicule_nom || data.vehicule_id} (Coût: ${data.cout} DZD)`);
-    return newEnt;
+  const enregistrerEntretien = async (data: Omit<Entretien, 'id' | 'created_at'>): Promise<Entretien | null> => {
+    const created = await persistMaterialMutation('/api/materiel/entretiens', 'POST', {
+      vehicule_id: data.vehicule_id,
+      type: data.type,
+      gravite: data.gravite || 'FAIBLE',
+      statut_operation: data.statut_operation || 'EFFECTUE',
+      description: data.description,
+      date: data.date,
+      kilometrage_entretien: data.kilometrage_entretien || 0,
+      heures_entretien: data.heures_entretien || 0,
+      cout: data.cout || 0,
+      garage_nom: data.garage_nom || null,
+      piece_rechange_utilisee: data.piece_rechange_utilisee || null,
+      facture_ref: data.facture_ref || null,
+    });
+    if (!created) return null;
+    logOperation('CREATION', 'MATERIEL', 'materiel_entretiens', created.id, `Entretien ${data.type} pour ${data.vehicule_nom || data.vehicule_id} (Coût : ${data.cout || 0} DZD)`);
+    return created as Entretien;
   };
 
-  const declarerPanne = (
-    vehiculeId: string, 
-    description: string, 
+  const declarerPanne = async (
+    vehiculeId: string,
+    description: string,
     gravite: 'FAIBLE' | 'MOYENNE' | 'CRITIQUE' | 'IMMOBILISATION' = 'CRITIQUE',
     garageNom?: string,
     coutEstime?: number
-  ): Entretien => {
-    const veh = vehicules.find(v => v.id === vehiculeId);
-    const newEnt: Entretien = {
-      id: `ent-${Date.now()}`,
+  ): Promise<Entretien | null> => {
+    const vehicle = vehicules.find(item => item.id === vehiculeId);
+    const created = await persistMaterialMutation('/api/materiel/entretiens', 'POST', {
       vehicule_id: vehiculeId,
-      vehicule_nom: veh ? `${veh.marque} ${veh.modele}` : 'Véhicule',
       type: 'PANNE',
-      nature: 'CURATIF',
       gravite,
       statut_operation: 'EN_COURS',
       description,
-      date: new Date().toISOString().split('T')[0],
-      kilometrage_entretien: veh?.kilometrage || 0,
-      heures_entretien: veh?.heures_fonctionnement || 0,
+      date: new Date().toISOString().slice(0, 10),
+      kilometrage_entretien: vehicle?.kilometrage || 0,
+      heures_entretien: vehicle?.heures_fonctionnement || 0,
       cout: coutEstime || 0,
-      prestataire: garageNom ? 'GARAGE_EXTERNE' : 'ATELIER_INTERNE',
-      garage_nom: garageNom,
-      created_at: new Date().toISOString()
-    };
-
-    setEntretiens(prev => [newEnt, ...prev]);
-
-    // Passer le véhicule en panne
-    setVehicules(prev => prev.map(v => {
-      if (v.id === vehiculeId) {
-        return { ...v, statut: 'EN_PANNE' };
-      }
-      return v;
-    }));
-
-    logOperation('CREATION', 'MATERIEL', 'entretiens', newEnt.id, `Déclaration de panne ${gravite} sur ${veh?.num_interne} : ${description}`);
-    return newEnt;
+      garage_nom: garageNom || null,
+    });
+    if (!created) return null;
+    logOperation('CREATION', 'MATERIEL', 'materiel_entretiens', created.id, `Déclaration de panne ${gravite} sur ${vehicle?.num_interne || vehiculeId} : ${description}`);
+    return created as Entretien;
   };
 
-  const renouvelerAssurance = (
-    vehiculeId: string, 
-    nouvelleCompagnie: string, 
-    nouvellePolice: string, 
-    dateDebut: string, 
-    dateFin: string, 
-    coutDzd: number, 
+  const renouvelerAssurance = async (
+    vehiculeId: string,
+    nouvelleCompagnie: string,
+    nouvellePolice: string,
+    dateDebut: string,
+    dateFin: string,
+    coutDzd: number,
     quittanceRef?: string
-  ): Vehicule | null => {
-    let updatedVeh: Vehicule | null = null;
-    const v = vehicules.find(item => item.id === vehiculeId);
-    if (!v) return null;
-
-    updatedVeh = {
-      ...v,
+  ): Promise<Vehicule | null> => {
+    const vehicle = vehicules.find(item => item.id === vehiculeId);
+    if (!vehicle) return null;
+    const updated = await persistMaterialMutation('/api/materiel/parc', 'PATCH', {
+      id: vehiculeId,
       assurance_compagnie: nouvelleCompagnie,
       assurance_police: nouvellePolice,
-      assurance_date_debut: dateDebut,
       date_fin_assurance: dateFin,
-      assurance_cout_dzd: coutDzd
-    };
-
-    setVehicules(prev => prev.map(item => item.id === vehiculeId ? (updatedVeh as Vehicule) : item));
-
-    // Enregistrer automatiquement l'opération dans le journal des entretiens & dépenses
-    const newEnt: Entretien = {
-      id: `ent-ass-${Date.now()}`,
+      assurance_cout_dzd: coutDzd,
+    });
+    if (!updated) return null;
+    await persistMaterialMutation('/api/materiel/entretiens', 'POST', {
       vehicule_id: vehiculeId,
-      vehicule_nom: `${v.marque} ${v.modele}`,
       type: 'ASSURANCE',
-      nature: 'PREVENTIF',
       gravite: 'FAIBLE',
       statut_operation: 'EFFECTUE',
-      description: `Renouvellement police d'assurance ${nouvelleCompagnie} (N° ${nouvellePolice}). Validité du ${dateDebut} au ${dateFin}.`,
+      description: `Renouvellement police ${nouvelleCompagnie} (N° ${nouvellePolice}) valable du ${dateDebut} au ${dateFin}.`,
       date: dateDebut,
-      kilometrage_entretien: v.kilometrage || 0,
-      heures_entretien: v.heures_fonctionnement || 0,
+      kilometrage_entretien: vehicle.kilometrage || 0,
+      heures_entretien: vehicle.heures_fonctionnement || 0,
       cout: coutDzd,
-      facture_ref: quittanceRef || `QUIT-ASS-${Date.now().toString().slice(-4)}`,
       garage_nom: nouvelleCompagnie,
-      created_at: new Date().toISOString()
-    };
-    setEntretiens(prev => [newEnt, ...prev]);
+      facture_ref: quittanceRef || null,
+    });
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_engins', vehiculeId, `Renouvellement assurance ${vehicle.num_interne} : ${nouvelleCompagnie}, échéance ${dateFin}, prime ${coutDzd} DZD`);
+    return updated as Vehicule;
+  };
 
-    logOperation('MODIFICATION', 'MATERIEL', 'vehicules', vehiculeId, `Renouvellement assurance pour ${v.num_interne} : ${nouvelleCompagnie} (${nouvellePolice}), Échéance: ${dateFin}, Prime: ${coutDzd} DZD`);
-    return updatedVeh;
+  const permuterPneus = async (
+    vehiculeId: string,
+    pieceId1: string,
+    pieceId2: string,
+    km: number,
+    motif: string,
+    operateur: string
+  ): Promise<boolean> => {
+    const result = await persistMaterialMutation('/api/materiel/pieces/permutation', 'POST', {
+      piece1_id: pieceId1,
+      piece2_id: pieceId2,
+      kilometrage: km,
+      motif,
+      operateur,
+    });
+    if (!result) return false;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_pieces_remplacables', pieceId1, `Permutation croisée de pneus sur véhicule ${vehiculeId}`);
+    return true;
+  };
+
+  const remplacerPieceRemplacable = async (
+    pieceId: string,
+    nouvellePiece: Omit<PieceRemplacable, 'id' | 'created_at'>,
+    motif: string,
+    note?: string
+  ): Promise<PieceRemplacable | null> => {
+    const created = await persistMaterialMutation('/api/materiel/pieces/remplacement', 'POST', {
+      ancienne_piece_id: pieceId,
+      nouvelle_piece: {
+        materiel_id: nouvellePiece.vehicule_id,
+        type: nouvellePiece.type,
+        designation: nouvellePiece.designation,
+        marque: nouvellePiece.marque,
+        dimensions: nouvellePiece.dimensions,
+        numero_serie: nouvellePiece.numero_serie,
+        position: nouvellePiece.position,
+        date_installation: nouvellePiece.date_installation,
+        kilometrage_installation: nouvellePiece.kilometrage_installation,
+        heures_installation: nouvellePiece.heures_installation,
+        etat: nouvellePiece.etat,
+        profondeur_sculpture_mm: nouvellePiece.profondeur_sculpture_mm,
+        cout_achat_dzd: nouvellePiece.cout_achat_dzd,
+        fournisseur: nouvellePiece.fournisseur,
+      },
+      motif,
+      note,
+    });
+    if (!created) return null;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_pieces_remplacables', pieceId, `Remplacement de pièce : ${motif}`);
+    return created as PieceRemplacable;
   };
 
   const gererPieceRemplacable = (data: Omit<PieceRemplacable, 'id' | 'created_at'>): PieceRemplacable => {
