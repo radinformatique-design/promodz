@@ -88,6 +88,11 @@ export async function PATCH(request: Request) {
   const body = await request.json();
   const { id, chantiers_assignes, ...updates } = body ?? {};
   if (!id) return NextResponse.json({ error: 'Identifiant utilisateur obligatoire.' }, { status: 400 });
+  const allowed: Record<string, unknown> = {};
+  for (const key of ['nom', 'prenom', 'email', 'telephone', 'poste', 'type', 'role_id', 'statut', 'photo_url']) {
+    if (Object.prototype.hasOwnProperty.call(updates, key)) allowed[key] = updates[key];
+  }
+
   if (id === current.profile.id && updates.statut && updates.statut !== 'ACTIF') {
     return NextResponse.json({ error: 'Vous ne pouvez pas désactiver votre propre compte.' }, { status: 400 });
   }
@@ -106,11 +111,6 @@ export async function PATCH(request: Request) {
       where: { entreprise_id: current.profile.entreprise_id, statut: 'ACTIF', role: { code: 'ADMINISTRATEUR' } },
     });
     if (activeAdmins <= 1) return NextResponse.json({ error: 'Impossible de désactiver ou rétrograder le dernier administrateur actif.' }, { status: 409 });
-  }
-
-  const allowed: Record<string, unknown> = {};
-  for (const key of ['nom', 'prenom', 'email', 'telephone', 'poste', 'type', 'role_id', 'statut', 'photo_url']) {
-    if (Object.prototype.hasOwnProperty.call(updates, key)) allowed[key] = updates[key];
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, 'email')) return NextResponse.json({ error: 'Modifiez l’adresse e-mail dans Supabase Auth puis synchronisez le profil.' }, { status: 400 });
