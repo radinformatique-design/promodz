@@ -660,3 +660,199 @@ CREATE POLICY utilisateur_chantiers_write_admin ON public.utilisateur_chantiers
     AND EXISTS (SELECT 1 FROM public.utilisateurs u
       WHERE u.id = utilisateur_chantiers.utilisateur_id AND u.entreprise_id = public.current_company_id())
   );
+
+
+-- Réduction des portées sur les modèles sans entreprise_id direct : toujours
+-- remonter au chantier de l'entreprise courante avant d'autoriser une ligne.
+
+DROP POLICY IF EXISTS commercial_lots_select_scope ON public.commercial_programmes_lots;
+DROP POLICY IF EXISTS commercial_lots_write_central ON public.commercial_programmes_lots;
+CREATE POLICY commercial_lots_select_scope ON public.commercial_programmes_lots
+  FOR SELECT TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMMERCIAL'])
+    AND public.can_access_chantier(chantier_id)
+  );
+CREATE POLICY commercial_lots_write_central ON public.commercial_programmes_lots
+  FOR ALL TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMMERCIAL'])
+    AND public.can_access_chantier(chantier_id)
+  )
+  WITH CHECK (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMMERCIAL'])
+    AND public.can_access_chantier(chantier_id)
+  );
+
+DROP POLICY IF EXISTS commercial_reservations_select_central ON public.commercial_reservations_vefa;
+DROP POLICY IF EXISTS commercial_reservations_write_central ON public.commercial_reservations_vefa;
+CREATE POLICY commercial_reservations_select_central ON public.commercial_reservations_vefa
+  FOR SELECT TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMMERCIAL'])
+    AND EXISTS (SELECT 1 FROM public.commercial_programmes_lots b
+      WHERE b.id = bien_id AND public.can_access_chantier(b.chantier_id))
+  );
+CREATE POLICY commercial_reservations_write_central ON public.commercial_reservations_vefa
+  FOR ALL TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMMERCIAL'])
+    AND EXISTS (SELECT 1 FROM public.commercial_programmes_lots b
+      WHERE b.id = bien_id AND public.can_access_chantier(b.chantier_id))
+  )
+  WITH CHECK (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMMERCIAL'])
+    AND EXISTS (SELECT 1 FROM public.commercial_programmes_lots b
+      WHERE b.id = bien_id AND public.can_access_chantier(b.chantier_id))
+  );
+
+DROP POLICY IF EXISTS commercial_clients_select_central ON public.commercial_clients;
+DROP POLICY IF EXISTS commercial_clients_write_central ON public.commercial_clients;
+CREATE POLICY commercial_clients_select_central ON public.commercial_clients
+  FOR SELECT TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMMERCIAL'])
+    AND EXISTS (
+      SELECT 1 FROM public.commercial_reservations_vefa r
+      JOIN public.commercial_programmes_lots b ON b.id = r.bien_id
+      WHERE r.client_id = commercial_clients.id
+        AND public.can_access_chantier(b.chantier_id)
+    )
+  );
+CREATE POLICY commercial_clients_write_central ON public.commercial_clients
+  FOR ALL TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMMERCIAL'])
+    AND EXISTS (
+      SELECT 1 FROM public.commercial_reservations_vefa r
+      JOIN public.commercial_programmes_lots b ON b.id = r.bien_id
+      WHERE r.client_id = commercial_clients.id
+        AND public.can_access_chantier(b.chantier_id)
+    )
+  )
+  WITH CHECK (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMMERCIAL'])
+    AND EXISTS (
+      SELECT 1 FROM public.commercial_reservations_vefa r
+      JOIN public.commercial_programmes_lots b ON b.id = r.bien_id
+      WHERE r.client_id = commercial_clients.id
+        AND public.can_access_chantier(b.chantier_id)
+    )
+  );
+
+DROP POLICY IF EXISTS juridique_dossiers_select_scope ON public.juridique_dossiers;
+DROP POLICY IF EXISTS juridique_dossiers_write_central ON public.juridique_dossiers;
+CREATE POLICY juridique_dossiers_select_scope ON public.juridique_dossiers
+  FOR SELECT TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_JURIDIQUE'])
+    AND chantier_id IS NOT NULL
+    AND public.can_access_chantier(chantier_id)
+  );
+CREATE POLICY juridique_dossiers_write_central ON public.juridique_dossiers
+  FOR ALL TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_JURIDIQUE'])
+    AND chantier_id IS NOT NULL
+    AND public.can_access_chantier(chantier_id)
+  )
+  WITH CHECK (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_JURIDIQUE'])
+    AND chantier_id IS NOT NULL
+    AND public.can_access_chantier(chantier_id)
+  );
+
+-- Les journaux globaux sont filtrés par l'entreprise du propriétaire, y compris
+-- lorsque le journal n'est rattaché à aucun chantier.
+DROP POLICY IF EXISTS audit_logs_select_admin ON public.audit_logs;
+CREATE POLICY audit_logs_select_admin ON public.audit_logs
+  FOR SELECT TO authenticated
+  USING (
+    public.is_company_admin()
+    AND (
+      (chantier_id IS NOT NULL AND public.can_access_chantier(chantier_id))
+      OR (chantier_id IS NULL AND EXISTS (
+        SELECT 1 FROM public.utilisateurs u
+        WHERE u.id = audit_logs.utilisateur_id
+          AND u.entreprise_id = public.current_company_id()
+      ))
+    )
+  );
+
+-- Les documents sans chantier sont privés à leur auteur ; les documents chantier
+-- restent visibles dans le périmètre du chantier.
+DROP POLICY IF EXISTS documents_ged_scope ON public.documents_ged;
+CREATE POLICY documents_ged_select_scope ON public.documents_ged
+  FOR SELECT TO authenticated
+  USING (
+    (chantier_id IS NOT NULL AND public.can_access_chantier(chantier_id))
+    OR (chantier_id IS NULL AND auteur_id = public.current_app_user_id())
+  );
+CREATE POLICY documents_ged_insert_scope ON public.documents_ged
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    auteur_id = public.current_app_user_id()
+    AND (chantier_id IS NULL OR public.can_access_chantier(chantier_id))
+  );
+CREATE POLICY documents_ged_update_author ON public.documents_ged
+  FOR UPDATE TO authenticated
+  USING (
+    auteur_id = public.current_app_user_id()
+    OR (public.is_company_admin() AND chantier_id IS NOT NULL AND public.can_access_chantier(chantier_id))
+  )
+  WITH CHECK (
+    auteur_id = public.current_app_user_id()
+    OR (public.is_company_admin() AND chantier_id IS NOT NULL AND public.can_access_chantier(chantier_id))
+  );
+
+-- Les historiques d'affectation RH sont visibles par RH/admin et le conducteur
+-- concerné dans son chantier, sans exposition aux autres rôles de terrain.
+DROP POLICY IF EXISTS rh_affectations_chantier_scope ON public.rh_affectations_historique;
+CREATE POLICY rh_affectations_select_scope ON public.rh_affectations_historique
+  FOR SELECT TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_RH'])
+    OR (public.current_user_has_any_role(ARRAY['CONDUCTEUR_TRAVAUX']) AND public.can_access_chantier(chantier_id))
+  );
+CREATE POLICY rh_affectations_write_hr ON public.rh_affectations_historique
+  FOR ALL TO authenticated
+  USING (public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_RH']))
+  WITH CHECK (public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_RH']));
+
+-- Les opérations d'entretien et les pièces du parc ne peuvent être modifiées
+-- que par le responsable matériel / administrateur.
+DROP POLICY IF EXISTS materiel_entretiens_parent_scope ON public.materiel_entretiens;
+CREATE POLICY materiel_entretiens_select_parent ON public.materiel_entretiens
+  FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.materiel_engins m
+    WHERE m.id = materiel_id
+      AND ((m.chantier_actuel_id IS NOT NULL AND public.can_access_chantier(m.chantier_actuel_id))
+        OR (m.chantier_actuel_id IS NULL AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL'])))));
+CREATE POLICY materiel_entretiens_write_central ON public.materiel_entretiens
+  FOR ALL TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL'])
+    AND EXISTS (SELECT 1 FROM public.materiel_engins m WHERE m.id = materiel_id)
+  )
+  WITH CHECK (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL'])
+    AND EXISTS (SELECT 1 FROM public.materiel_engins m WHERE m.id = materiel_id)
+  );
+
+DROP POLICY IF EXISTS materiel_pieces_parent_scope ON public.materiel_pieces_remplacables;
+CREATE POLICY materiel_pieces_select_parent ON public.materiel_pieces_remplacables
+  FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.materiel_engins m
+    WHERE m.id = materiel_id
+      AND ((m.chantier_actuel_id IS NOT NULL AND public.can_access_chantier(m.chantier_actuel_id))
+        OR (m.chantier_actuel_id IS NULL AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL'])))));
+CREATE POLICY materiel_pieces_write_central ON public.materiel_pieces_remplacables
+  FOR ALL TO authenticated
+  USING (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL'])
+    AND EXISTS (SELECT 1 FROM public.materiel_engins m WHERE m.id = materiel_id)
+  )
+  WITH CHECK (
+    public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL'])
+    AND EXISTS (SELECT 1 FROM public.materiel_engins m WHERE m.id = materiel_id)
+  );
