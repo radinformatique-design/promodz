@@ -18,7 +18,7 @@ export async function GET() {
   const ids = await scopeIds(current.profile);
   const rows = await prisma.pointage.findMany({
     where: { chantier_id: { in: ids } },
-    include: { employe: true, chantier: true },
+    include: { employe: { select: { id: true, matricule: true, nom: true, prenom: true, fonction: true, qualification: true, statut: true } }, chantier: true },
     orderBy: [{ date: 'desc' }, { created_at: 'desc' }],
     take: 2000,
   });
