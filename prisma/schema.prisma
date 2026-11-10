@@ -147,6 +147,7 @@ model Chantier {
   litiges                   LitigeJuridique[]
   budgets                   BudgetChantier[]
   auditLogs                 AuditLog[]
+  caisse                    CaisseChantier?
 
   @@map("chantiers")
 }
@@ -182,6 +183,10 @@ model Utilisateur {
   notifications     Notification[]
   documentsGED      DocumentGED[]
   demandesAchatEmises DemandeAchat[]
+  mouvementsCaisseEmis MouvementCaisse[] @relation("AuteurMouvementCaisse")
+  mouvementsCaisseValides MouvementCaisse[] @relation("ValidateurMouvementCaisse")
+  demandesCaisseEmises DemandeCaisse[] @relation("DemandeurCaisse")
+  demandesCaisseTraitees DemandeCaisse[] @relation("TraiteurCaisse")
 
   @@map("utilisateurs")
 }
@@ -717,4 +722,66 @@ model BudgetChantier {
 
   @@unique([chantier_id, annee_exercice])
   @@map("comptabilite_budgets")
+}
+
+
+// ==========================================
+// 12. CAISSE DE FONDS DE ROULEMENT PAR CHANTIER
+// ==========================================
+
+model CaisseChantier {
+  id          String   @id @default(uuid())
+  chantier_id String   @unique @map("chantier_id")
+  plafond     Decimal  @default(0) @db.Decimal(18, 2)
+  devise      String   @default("DZD")
+  actif       Boolean  @default(true)
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  chantier    Chantier @relation(fields: [chantier_id], references: [id], onDelete: Cascade)
+  mouvements  MouvementCaisse[]
+  demandes    DemandeCaisse[]
+
+  @@map("comptabilite_caisses_chantier")
+}
+
+model MouvementCaisse {
+  id             String   @id @default(uuid())
+  caisse_id      String   @map("caisse_id")
+  type           String   // APPROVISIONNEMENT | SORTIE | AJUSTEMENT
+  montant        Decimal  @db.Decimal(18, 2)
+  motif          String
+  reference      String?
+  justificatif_url String? @map("justificatif_url")
+  auteur_id      String   @map("auteur_id")
+  validateur_id  String?  @map("validateur_id")
+  created_at     DateTime @default(now()) @map("created_at")
+
+  caisse         CaisseChantier @relation(fields: [caisse_id], references: [id], onDelete: Cascade)
+  auteur         Utilisateur @relation("AuteurMouvementCaisse", fields: [auteur_id], references: [id])
+  validateur     Utilisateur? @relation("ValidateurMouvementCaisse", fields: [validateur_id], references: [id])
+
+  @@index([caisse_id, created_at])
+  @@map("comptabilite_mouvements_caisse")
+}
+
+model DemandeCaisse {
+  id             String   @id @default(uuid())
+  caisse_id      String   @map("caisse_id")
+  demandeur_id   String   @map("demandeur_id")
+  traiteur_id    String?  @map("traiteur_id")
+  montant        Decimal  @db.Decimal(18, 2)
+  motif          String
+  statut         String   @default("EN_ATTENTE") // EN_ATTENTE | APPROUVEE | REFUSEE
+  commentaire_traitement String? @map("commentaire_traitement")
+  mouvement_id   String?  @unique @map("mouvement_id")
+  created_at     DateTime @default(now()) @map("created_at")
+  traite_at      DateTime? @map("traite_at")
+
+  caisse         CaisseChantier @relation(fields: [caisse_id], references: [id], onDelete: Cascade)
+  demandeur      Utilisateur @relation("DemandeurCaisse", fields: [demandeur_id], references: [id])
+  traiteur       Utilisateur? @relation("TraiteurCaisse", fields: [traiteur_id], references: [id])
+
+  @@index([caisse_id, statut, created_at])
+  @@map("comptabilite_demandes_caisse")
 }
