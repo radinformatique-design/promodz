@@ -162,6 +162,7 @@ async function main() {
       update: {},
       create: {
         id: f.id,
+        entreprise_id: entreprise.id,
         code_fournisseur: code,
         raison_sociale: f.nom_fournisseur,
         categorie: f.categorie,
