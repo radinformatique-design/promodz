@@ -83,7 +83,8 @@ export class AuthService {
     }
   }
 
-  public logout(): void {\n    void import('@/lib/supabase/client').then(({ createClient }) => createClient().auth.signOut());
+  public logout(): void {
+    void import('@/lib/supabase/client').then(({ createClient }) => createClient().auth.signOut());
     if (this.currentSessionToken) {
       const activeSession = this.sessions.find(s => s.token === this.currentSessionToken);
       if (activeSession) {
