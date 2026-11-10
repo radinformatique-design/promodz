@@ -22,6 +22,7 @@ import { MetresView } from '../views/MetresView';
 import { PointageView } from '../views/PointageView';
 import { TechniqueView } from '../views/TechniqueView';
 import { ComptabiliteView } from '../views/ComptabiliteView';
+import { CaisseView } from '../views/CaisseView';
 import { JuridiqueView } from '../views/JuridiqueView';
 import { CommercialView } from '../views/CommercialView';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -73,6 +74,8 @@ const AppContent: React.FC = () => {
         return <MetresView />;
       case 'comptabilite':
         return <ComptabiliteView />;
+      case 'caisse':
+        return <CaisseView />;
       case 'juridique':
         return <JuridiqueView />;
       case 'commercial':
