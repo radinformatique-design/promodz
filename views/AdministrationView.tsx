@@ -262,7 +262,16 @@ export const AdministrationView: React.FC = () => {
         method: editingUser ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingUser
-          ? { id: editingUser.id, ...userFormData }
+          ? {
+              id: editingUser.id,
+              nom: userFormData.nom,
+              prenom: userFormData.prenom,
+              telephone: userFormData.telephone,
+              poste: userFormData.poste,
+              type: userFormData.type,
+              role_id: userFormData.role_id,
+              chantiers_assignes: userFormData.chantiers_assignes,
+            }
           : { ...userFormData, auth_user_id: userFormData.auth_user_id.trim() }),
       });
       const result = await response.json().catch(() => ({}));
