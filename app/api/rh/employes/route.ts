@@ -17,6 +17,7 @@ async function getScope(profile: { entreprise_id: string; type: string; affectat
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
+  if (current.profile.type === 'CENTRAL' && !canManageHr(current.profile)) return NextResponse.json({ error: 'Accès au module RH réservé au service RH.' }, { status: 403 });
   const ids = await getScope(current.profile);
   const rows = await prisma.employe.findMany({
     where: { chantier_actuel_id: { in: ids } },
