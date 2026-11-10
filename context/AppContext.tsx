@@ -480,7 +480,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           personne_urgence_nom: '',
           personne_urgence_tel: '',
           categorie: employee.fonction || 'OUVRIER',
-          date_embauche: employee.date_recrutement,
+          date_embauche: employee.date_recrutement || '',
+          salaire_base_dzd: Number(employee.salaire_base_dzd || 0),
           chantier_actuel_nom: employee.chantierActuel?.nom_projet || '',
           date_affectation_actuelle: '',
           documents_fournis: {
