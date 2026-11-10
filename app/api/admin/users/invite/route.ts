@@ -16,8 +16,8 @@ export async function POST(request: Request) {
   const roleId = String(body?.role_id || '');
   const telephone = String(body?.telephone || '').trim();
   const poste = String(body?.poste || '').trim();
-  const chantierIds = Array.isArray(body?.chantiers_assignes)
-    ? [...new Set(body.chantiers_assignes.map((id: unknown) => String(id)))]
+  const chantierIds: string[] = Array.isArray(body?.chantiers_assignes)
+    ? Array.from(new Set<string>((body.chantiers_assignes as unknown[]).map((id) => String(id))))
     : [];
 
   if (!nom || !prenom || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !roleId ||
