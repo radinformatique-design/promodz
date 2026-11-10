@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin } from '@/lib/auth/current-app-profile';
 
-export const dynamic = 'force-dynamic';
-
 function canManageHr(profile: { role: { code: string }; type: string }) {
   return isCompanyAdmin(profile as any) || (profile.type === 'CENTRAL' && profile.role.code === 'RESPONSABLE_RH');
 }
