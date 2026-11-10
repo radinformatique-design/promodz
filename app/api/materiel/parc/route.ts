@@ -5,6 +5,7 @@ import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole }
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
+  if (current.profile.type === 'CENTRAL' && !isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) return NextResponse.json({ error: 'Accès au parc réservé au service matériel.' }, { status: 403 });
 
   const chantierIds = current.profile.type === 'CHANTIER'
     ? assignedChantierIds(current.profile)
@@ -15,7 +16,7 @@ export async function GET() {
 
   try {
     const materiels = await prisma.materielEngin.findMany({
-      where: { entreprise_id: current.profile.entreprise_id, OR: [{ chantier_actuel_id: null }, { chantier_actuel_id: { in: chantierIds } }] },
+      where: { entreprise_id: current.profile.entreprise_id, OR: current.profile.type === 'CHANTIER' ? [{ chantier_actuel_id: { in: chantierIds } }] : [{ chantier_actuel_id: null }, { chantier_actuel_id: { in: chantierIds } }] },
       include: { chantierActuel: true, entretiens: true, piecesRemplacables: true },
       orderBy: { code_parc: 'asc' },
     });
