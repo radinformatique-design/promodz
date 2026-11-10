@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     ancien_numero_serie: old.numero_serie,
     kilometrage: km,
     motif: String(body.motif || 'Remplacement de pièce'),
-    note: body.note ? String(body.note) : undefined,
+    ...(body.note ? { note: String(body.note) } : {}),
     cout_dzd: cost,
   };
 
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         where: { id: old.id },
         data: {
           etat: 'REMPLACE',
-          historique_remplacements: [history, ...((old.historique_remplacements as any[]) || [])],
+          historique_remplacements: [history, ...((old.historique_remplacements as any[]) || [])] as any,
         },
       });
       return tx.pieceRemplacableVehicule.create({
