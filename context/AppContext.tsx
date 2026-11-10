@@ -281,8 +281,8 @@ interface AppContextType {
   declarerPanne: (vehiculeId: string, description: string, gravite?: 'FAIBLE' | 'MOYENNE' | 'CRITIQUE' | 'IMMOBILISATION', garageNom?: string, coutEstime?: number) => Entretien;
   renouvelerAssurance: (vehiculeId: string, nouvelleCompagnie: string, nouvellePolice: string, dateDebut: string, dateFin: string, coutDzd: number, quittanceRef?: string) => Vehicule | null;
   gererPieceRemplacable: (data: Omit<PieceRemplacable, 'id' | 'created_at'>) => PieceRemplacable;
-  permuterPneus: (vehiculeId: string, pieceId1: string, pieceId2: string, km: number, motif: string, operateur: string) => boolean;
-  remplacerPieceRemplacable: (pieceId: string, nouvellePiece: Omit<PieceRemplacable, 'id' | 'created_at'>, motif: string, note?: string) => PieceRemplacable | null;
+  permuterPneus: (vehiculeId: string, pieceId1: string, pieceId2: string, km: number, motif: string, operateur: string) => Promise<boolean>;
+  remplacerPieceRemplacable: (pieceId: string, nouvellePiece: Omit<PieceRemplacable, 'id' | 'created_at'>, motif: string, note?: string) => Promise<PieceRemplacable | null>;
 
   // Comptabilité & Fiscalité
   facturesClients: FactureClient[];
@@ -3232,102 +3232,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPiecesRemplacables(prev => [newPce, ...prev]);
     logOperation('CREATION', 'MATERIEL', 'pieces_remplacables', newPce.id, `Suivi composant ${data.type} (${data.designation}) pour véhicule ${data.vehicule_id}`);
     return newPce;
-  };
-
-  const permuterPneus = (
-    vehiculeId: string, 
-    pieceId1: string, 
-    pieceId2: string, 
-    km: number, 
-    motif: string, 
-    operateur: string
-  ): boolean => {
-    const p1 = piecesRemplacables.find(p => p.id === pieceId1);
-    const p2 = piecesRemplacables.find(p => p.id === pieceId2);
-    if (!p1 || !p2) return false;
-
-    const pos1 = p1.position;
-    const pos2 = p2.position;
-    const dateNow = new Date().toISOString().split('T')[0];
-
-    const hist1: HistoriquePermutationPneu = {
-      id: `perm-${Date.now()}-1`,
-      date: dateNow,
-      ancienne_position: pos1,
-      nouvelle_position: pos2,
-      kilometrage: km,
-      motif,
-      operateur
-    };
-
-    const hist2: HistoriquePermutationPneu = {
-      id: `perm-${Date.now()}-2`,
-      date: dateNow,
-      ancienne_position: pos2,
-      nouvelle_position: pos1,
-      kilometrage: km,
-      motif,
-      operateur
-    };
-
-    setPiecesRemplacables(prev => prev.map(p => {
-      if (p.id === pieceId1) {
-        return {
-          ...p,
-          position: pos2,
-          historique_permutations: [hist1, ...(p.historique_permutations || [])]
-        };
-      }
-      if (p.id === pieceId2) {
-        return {
-          ...p,
-          position: pos1,
-          historique_permutations: [hist2, ...(p.historique_permutations || [])]
-        };
-      }
-      return p;
-    }));
-
-    logOperation('MODIFICATION', 'MATERIEL', 'pieces_remplacables', pieceId1, `Permutation croisée de pneus entre position ${pos1} et ${pos2} sur véhicule ${vehiculeId}`);
-    return true;
-  };
-
-  const remplacerPieceRemplacable = (
-    pieceId: string, 
-    nouvellePiece: Omit<PieceRemplacable, 'id' | 'created_at'>, 
-    motif: string, 
-    note?: string
-  ): PieceRemplacable | null => {
-    const ancienne = piecesRemplacables.find(p => p.id === pieceId);
-    if (!ancienne) return null;
-
-    const dateNow = new Date().toISOString().split('T')[0];
-
-    // Marquer l'ancienne pièce comme REMPLACE
-    const histRemp: HistoriqueRemplacementPiece = {
-      id: `remp-${Date.now()}`,
-      date: dateNow,
-      ancien_numero_serie: ancienne.numero_serie,
-      kilometrage: nouvellePiece.kilometrage_installation,
-      motif,
-      note,
-      cout_dzd: nouvellePiece.cout_achat_dzd
-    };
-
-    const nouvelle: PieceRemplacable = {
-      ...nouvellePiece,
-      id: `pce-${Date.now()}`,
-      historique_remplacements: [histRemp, ...(ancienne.historique_remplacements || [])],
-      created_at: new Date().toISOString()
-    };
-
-    setPiecesRemplacables(prev => [
-      nouvelle,
-      ...prev.map(p => p.id === pieceId ? { ...p, etat: 'REMPLACE' as const } : p)
-    ]);
-
-    logOperation('MODIFICATION', 'MATERIEL', 'pieces_remplacables', pieceId, `Remplacement du composant ${ancienne.designation} (${ancienne.numero_serie}) par ${nouvelle.numero_serie}. Motif: ${motif}`);
-    return nouvelle;
   };
 
   // Comptabilité & Fiscalité
