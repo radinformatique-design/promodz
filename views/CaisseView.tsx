@@ -55,6 +55,7 @@ export const CaisseView: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [reference, setReference] = useState('');
+  const [movementType, setMovementType] = useState<'SORTIE' | 'APPROVISIONNEMENT'>('SORTIE');
   const [ceiling, setCeiling] = useState('');
   const [requestAmount, setRequestAmount] = useState('');
   const [requestReason, setRequestReason] = useState('');
@@ -94,16 +95,17 @@ export const CaisseView: React.FC = () => {
     return funds.filter((fund) => fund.chantier.id === selectedChantierId);
   }, [funds, selectedChantierId]);
 
-  const selectedFund = visibleFunds[0] || null;
+  const selectedFund = selectedChantierId === 'ALL' ? null : (visibleFunds[0] || null);
+  const totalCeiling = visibleFunds.reduce((sum, fund) => sum + Number(fund.plafond || 0), 0);
+  const totalBalance = visibleFunds.reduce((sum, fund) => sum + Number(fund.solde || 0), 0);
   const pendingRequests = visibleFunds.flatMap((fund) =>
     fund.demandes.filter((request) => request.statut === 'EN_ATTENTE').map((request) => ({ ...request, chantier: fund.chantier }))
   );
 
   const submitCeiling = async (event: React.FormEvent) => {
     event.preventDefault();
-    const chantierId = selectedChantierId === 'ALL' ? allChantiers[0]?.id : selectedChantierId;
-    if (!chantierId || !Number.isFinite(Number(ceiling)) || Number(ceiling) <= 0) return;
-    await send('/api/caisse', 'PUT', { chantier_id: chantierId, plafond: Number(ceiling) }, 'Plafond enregistré.');
+    if (!selectedFund || !Number.isFinite(Number(ceiling)) || Number(ceiling) <= 0) return;
+    await send('/api/caisse', 'PUT', { chantier_id: selectedFund.chantier.id, plafond: Number(ceiling) }, 'Plafond enregistré.');
     setCeiling('');
   };
 
@@ -192,7 +194,7 @@ export const CaisseView: React.FC = () => {
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
         <Building2 className="h-4 w-4 text-slate-500" />
         <label className="text-xs font-semibold text-slate-600">Chantier affiché</label>
-        <select value={selectedChantierId} onChange={(e) => setSelectedChantierId(e.target.value)} className="min-w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+        <select value={selectedChantierId} onChange={(e) => setSelectedChantierId(e.target.value as string | 'ALL')} className="min-w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
           {isCentral && <option value="ALL">Tous les chantiers</option>}
           {allChantiers.map((chantier) => <option key={chantier.id} value={chantier.id}>{chantier.code_chantier} — {chantier.nom_projet}</option>)}
         </select>
@@ -210,13 +212,17 @@ export const CaisseView: React.FC = () => {
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <Metric title="Plafond autorisé" value={money(selectedFund?.plafond || 0)} icon={<Wallet className="h-5 w-5" />} />
-            <Metric title="Solde disponible" value={money(selectedFund?.solde || 0)} icon={<ArrowDownLeft className="h-5 w-5" />} />
-            <Metric title="Montant consommé" value={money(Number(selectedFund?.plafond || 0) - Number(selectedFund?.solde || 0))} icon={<ArrowUpRight className="h-5 w-5" />} />
+            <Metric title="Plafond autorisé" value={money(selectedChantierId === 'ALL' ? totalCeiling : (selectedFund?.plafond || 0))} icon={<Wallet className="h-5 w-5" />} />
+            <Metric title="Solde disponible" value={money(selectedChantierId === 'ALL' ? totalBalance : (selectedFund?.solde || 0))} icon={<ArrowDownLeft className="h-5 w-5" />} />
+            <Metric title="Montant consommé" value={money(selectedChantierId === 'ALL' ? totalCeiling - totalBalance : Number(selectedFund?.plafond || 0) - Number(selectedFund?.solde || 0))} icon={<ArrowUpRight className="h-5 w-5" />} />
           </div>
 
+          {selectedChantierId === 'ALL' && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Vue consolidée : sélectionnez un chantier précis pour modifier son plafond, enregistrer un mouvement ou demander un réapprovisionnement.</div>
+          )}
+
           <div className="grid gap-5 xl:grid-cols-2">
-            {canManageCeiling && (
+            {canManageCeiling && selectedFund && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
                 <h2 className="font-bold text-slate-900">Plafond de la caisse</h2>
                 <p className="mt-1 text-xs text-slate-500">Le plafond est défini par le siège central. Il ne peut pas être inférieur au solde actuel.</p>
@@ -227,24 +233,30 @@ export const CaisseView: React.FC = () => {
               </section>
             )}
 
-            {(canExit || canSupply) && (
+            {(canExit || canSupply) && selectedFund && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
                 <h2 className="font-bold text-slate-900">Enregistrer un mouvement</h2>
                 <p className="mt-1 text-xs text-slate-500">Chaque sortie est historisée et notifiée automatiquement au siège.</p>
-                <form onSubmit={(e) => void submitMovement(e, canExit ? 'SORTIE' : 'APPROVISIONNEMENT')} className="mt-4 space-y-3">
+                <form onSubmit={(e) => void submitMovement(e, movementType)} className="mt-4 space-y-3">
+                  {canExit && canSupply && (
+                    <select value={movementType} onChange={(e) => setMovementType(e.target.value as 'SORTIE' | 'APPROVISIONNEMENT')} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                      <option value="SORTIE">Sortie de caisse</option>
+                      <option value="APPROVISIONNEMENT">Approvisionnement</option>
+                    </select>
+                  )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <input type="number" min="0.01" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Montant en DZD" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
                     <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Référence (facultatif)" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
                   </div>
                   <input required value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Motif du mouvement" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
                   <button disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                    <Plus className="h-4 w-4" /> {canExit ? 'Enregistrer la sortie' : 'Enregistrer l’approvisionnement'}
+                    <Plus className="h-4 w-4" /> {movementType === 'SORTIE' ? 'Enregistrer la sortie' : 'Enregistrer l’approvisionnement'}
                   </button>
                 </form>
               </section>
             )}
 
-            {canAsk && (
+            {canAsk && selectedFund && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
                 <h2 className="font-bold text-slate-900">Demander un réapprovisionnement</h2>
                 <p className="mt-1 text-xs text-slate-500">La demande est transmise au service central pour décision.</p>
