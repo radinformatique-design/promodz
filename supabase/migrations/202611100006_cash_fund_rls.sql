@@ -180,7 +180,15 @@ CREATE POLICY demandes_caisse_update_central ON public.comptabilite_demandes_cai
     )
   )
   WITH CHECK (
-    public.is_company_accountant()
+    statut IN ('APPROUVEE', 'REFUSEE')
+    AND public.is_company_accountant()
     AND public.has_app_permission('CAISSE', 'TRAITER_DEMANDE')
     AND traiteur_id = public.current_app_user_id()
+    AND EXISTS (
+      SELECT 1
+      FROM public.comptabilite_caisses_chantier cc
+      JOIN public.chantiers c ON c.id = cc.chantier_id
+      WHERE cc.id = comptabilite_demandes_caisse.caisse_id
+        AND c.entreprise_id = public.current_company_id()
+    )
   );
