@@ -32,7 +32,7 @@ async function getVisibleChantierIds(profile: {
   return rows.map((row) => row.id);
 }
 
-async function getBalance(caisseId: string, db: typeof prisma = prisma) {
+type CaisseBalanceDb = Pick<typeof prisma, 'mouvementCaisse'>;\n\nasync function getBalance(caisseId: string, db: CaisseBalanceDb = prisma) {
   const [credits, debits] = await Promise.all([
     db.mouvementCaisse.aggregate({
       where: { caisse_id: caisseId, type: { in: ['APPROVISIONNEMENT', 'AJUSTEMENT'] } },
@@ -96,7 +96,7 @@ export async function PUT(request: Request) {
     const caisse = await prisma.$transaction(async (tx) => {
       const existing = await tx.caisseChantier.findUnique({ where: { chantier_id: chantierId } });
       if (existing) {
-        const balance = await getBalance(existing.id, tx as typeof prisma);
+        const balance = await getBalance(existing.id, tx);
         if (plafond < balance) throw new Error('Le plafond ne peut pas être inférieur au solde actuel.');
         return tx.caisseChantier.update({ where: { id: existing.id }, data: { plafond } });
       }
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
   try {
     const movement = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM comptabilite_caisses_chantier WHERE id = ${caisse.id} FOR UPDATE`;
-      const balance = await getBalance(caisse.id, tx as typeof prisma);
+      const balance = await getBalance(caisse.id, tx);
       const nextBalance = type === 'APPROVISIONNEMENT' ? balance + montant : balance - montant;
       if (type === 'SORTIE' && montant > balance) throw new Error('Solde de caisse insuffisant.');
       if (nextBalance > Number(caisse.plafond)) throw new Error('Cette opération dépasserait le plafond autorisé de la caisse.');
