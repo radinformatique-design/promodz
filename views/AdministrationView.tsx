@@ -216,8 +216,7 @@ export const AdministrationView: React.FC = () => {
     poste: '',
     type: 'CHANTIER' as UserType,
     role_id: '',
-    chantiers_assignes: [] as string[],
-    auth_user_id: ''
+    chantiers_assignes: [] as string[]
   });
 
   const handleOpenCreateUser = () => {
@@ -230,8 +229,7 @@ export const AdministrationView: React.FC = () => {
       poste: '',
       type: 'CHANTIER',
       role_id: roles.find(r => r.type_acces === 'CHANTIER' || r.type_acces === 'HYBRIDE')?.id || '',
-      chantiers_assignes: allChantiers[0]?.id ? [allChantiers[0].id] : [],
-      auth_user_id: ''
+      chantiers_assignes: allChantiers[0]?.id ? [allChantiers[0].id] : []
     });
     setIsUserModalOpen(true);
   };
@@ -246,8 +244,7 @@ export const AdministrationView: React.FC = () => {
       poste: user.poste,
       type: user.type,
       role_id: user.role_id,
-      chantiers_assignes: user.chantiers_assignes || [],
-      auth_user_id: ''
+      chantiers_assignes: user.chantiers_assignes || []
     });
     setIsUserModalOpen(true);
   };
@@ -256,13 +253,9 @@ export const AdministrationView: React.FC = () => {
     e.preventDefault();
     setUserActionError(null);
     if (!userFormData.nom || !userFormData.email) return;
-    if (!editingUser && !userFormData.auth_user_id.trim()) {
-      setUserActionError('Créez d’abord le compte dans Supabase Auth, puis renseignez son UUID ici.');
-      return;
-    }
 
     try {
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch(editingUser ? '/api/admin/users' : '/api/admin/users/invite', {
         method: editingUser ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingUser
@@ -276,7 +269,7 @@ export const AdministrationView: React.FC = () => {
               role_id: userFormData.role_id,
               chantiers_assignes: userFormData.chantiers_assignes,
             }
-          : { ...userFormData, auth_user_id: userFormData.auth_user_id.trim() }),
+          : userFormData),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Enregistrement du profil impossible.');
