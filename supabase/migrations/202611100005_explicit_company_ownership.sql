@@ -115,7 +115,7 @@ CREATE POLICY audit_logs_insert_self ON public.audit_logs
   WITH CHECK (
     entreprise_id = public.current_company_id()
     AND utilisateur_id = public.current_app_user_id()
-    AND (chantier_id IS NULL AND public.is_company_admin()
+    AND (chantier_id IS NULL AND public.current_app_user_type() = 'CENTRAL'
       OR chantier_id IS NOT NULL AND public.can_access_chantier(chantier_id))
   );
 
