@@ -749,12 +749,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       entite_cible,
       entite_id,
       description,
-      adresse_ip: '197.200.12.94',
+      adresse_ip: '',
       user_agent: navigator.userAgent,
       details_modifications: details
     };
 
     setAuditLogs(prev => [newLog, ...prev]);
+
+    if (currentUser) {
+      void fetch('/api/audit-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chantier_id: targetChantierId,
+          module,
+          action,
+          table_nom: entite_cible,
+          enregistrement_id: entite_id,
+          description,
+          donnees_anciennes: details?.avant,
+          donnees_nouvelles: details?.apres,
+        }),
+      }).then(async response => {
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          console.warn('[BatiProm] Journal d’audit non persisté :', result.error || response.status);
+        }
+      }).catch(error => console.warn('[BatiProm] API audit indisponible :', error));
+    }
   };
 
   // ==========================================
