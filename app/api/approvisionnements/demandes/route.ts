@@ -12,7 +12,7 @@ export async function GET() {
     : (await prisma.chantier.findMany({ where: { entreprise_id: current.profile.entreprise_id }, select: { id: true } })).map(x => x.id);
   const demandes = await prisma.demandeAchat.findMany({
     where: { chantier_id: { in: chantierIds } },
-    include: { chantier: true, demandeur: { select: { id: true, nom: true, prenom: true, email: true } }, bonsCommande: true },
+    include: { chantier: true, demandeur: { select: { id: true, nom: true, prenom: true, email: true, role: { select: { libelle: true } } } }, bonsCommande: true },
     orderBy: { date_demande: 'desc' },
   });
   return NextResponse.json(demandes);
