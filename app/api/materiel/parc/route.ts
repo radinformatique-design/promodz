@@ -34,6 +34,11 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
+    if (!body?.num_interne || !body?.marque || !body?.modele || !body?.categorie ||
+        !Number.isInteger(Number(body?.annee)) || Number(body.annee) < 1950 ||
+        Number(body.annee) > new Date().getFullYear() + 1) {
+      return NextResponse.json({ error: 'Code parc, marque, modèle, catégorie et année valide sont obligatoires.' }, { status: 400 });
+    }
     if (body.chantier_id) {
       const chantier = await prisma.chantier.findFirst({
         where: { id: body.chantier_id, entreprise_id: current.profile.entreprise_id },
@@ -49,7 +54,7 @@ export async function POST(req: Request) {
         marque: body.marque,
         modele: body.modele,
         immatriculation: body.immatriculation,
-        annee: body.annee || 2024,
+        annee: Number(body.annee),
         carburant: body.carburant || 'DIESEL',
         puissance: body.puissance,
         tonnage: body.tonnage,
