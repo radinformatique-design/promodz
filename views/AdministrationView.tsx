@@ -926,12 +926,12 @@ export const AdministrationView: React.FC = () => {
                 >
                   <option value="ALL">Tous les 11 rôles</option>
                   <optgroup label="Rôles du Siège">
-                    {roles.filter(r => r.niveau_hierarchique <= 2).map(r => (
+                    {roles.filter(r => r.type_acces === 'CENTRAL' || r.type_acces === 'HYBRIDE' || (r.niveau_hierarchique ?? 99) <= 2).map(r => (
                       <option key={r.id} value={r.id}>{r.libelle}</option>
                     ))}
                   </optgroup>
                   <optgroup label="Rôles de Chantier">
-                    {roles.filter(r => r.niveau_hierarchique > 2).map(r => (
+                    {roles.filter(r => r.type_acces === 'CHANTIER' || (r.type_acces !== 'CENTRAL' && r.type_acces !== 'HYBRIDE' && (r.niveau_hierarchique ?? 99) > 2)).map(r => (
                       <option key={r.id} value={r.id}>{r.libelle}</option>
                     ))}
                   </optgroup>
@@ -1064,7 +1064,7 @@ export const AdministrationView: React.FC = () => {
                             </th>
                             {filteredRoles.map(r => {
                               const isAdmin = r.code === 'ADMINISTRATEUR';
-                              const isCentral = r.niveau_hierarchique <= 2;
+                              const isCentral = r.type_acces === 'CENTRAL' || r.type_acces === 'HYBRIDE' || (r.niveau_hierarchique ?? 99) <= 2;
                               return (
                                 <th
                                   key={r.id}
