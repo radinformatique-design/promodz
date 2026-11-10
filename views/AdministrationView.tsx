@@ -89,8 +89,6 @@ export const AdministrationView: React.FC = () => {
     roles,
     permissions,
     rolePermissions,
-    updateRolePermission,
-    saveRbacMatrix,
     auditLogs,
     allChantiers,
     selectedChantierId,
