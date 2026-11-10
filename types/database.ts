@@ -27,7 +27,12 @@ export type PermissionAction =
   | 'SUPPRIMER'
   | 'VALIDER'
   | 'REFUSER'
-  | 'EXPORTER';
+  | 'EXPORTER'
+  | 'SORTIR'
+  | 'DEMANDER'
+  | 'APPROVISIONNER'
+  | 'GERER_PLAFOND'
+  | 'TRAITER_DEMANDE';
 
 export type ModuleCode = 
   | 'DASHBOARD'
@@ -39,6 +44,7 @@ export type ModuleCode =
   | 'MATERIEL'
   | 'COMMERCIAL'
   | 'APPROVISIONNEMENTS'
+  | 'CAISSE'
   | 'MAGASIN'
   | 'CHANTIERS'
   | 'NOTIFICATIONS'
