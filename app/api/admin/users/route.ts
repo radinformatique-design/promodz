@@ -49,6 +49,7 @@ export async function PATCH(request: Request) {
     include: { role: true },
   });
   if (!target) return NextResponse.json({ error: 'Utilisateur introuvable dans votre entreprise.' }, { status: 404 });
+  const effectiveType = String(allowed.type || target.type);
   const nextRoleCode = allowed.role_id
     ? (await prisma.role.findUnique({ where: { id: String(allowed.role_id) }, select: { code: true } }))?.code
     : target.role.code;
@@ -72,7 +73,6 @@ export async function PATCH(request: Request) {
     ? await prisma.role.findUnique({ where: { id: String(allowed.role_id) } })
     : target.role;
   if (!effectiveRole) return NextResponse.json({ error: 'Rôle inconnu.' }, { status: 400 });
-  const effectiveType = String(allowed.type || target.type);
   if (effectiveType === 'CENTRAL' && effectiveRole.type_acces === 'CHANTIER') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs chantier.' }, { status: 400 });
   if (effectiveType === 'CHANTIER' && effectiveRole.type_acces === 'CENTRAL') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs centraux.' }, { status: 400 });
   if (effectiveType === 'CHANTIER' && target.type !== 'CHANTIER' && chantiers_assignes === undefined) return NextResponse.json({ error: 'Affectez au moins un chantier à ce nouvel utilisateur chantier.' }, { status: 400 });
