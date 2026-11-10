@@ -39,10 +39,9 @@ export class AuthService {
   private currentAuthenticatedUser: Utilisateur | null = null;
 
   constructor() {
-    // Initialise avec le premier utilisateur par défaut (Admin)
-    const initialUser = this.users[0];
-    this.currentAuthenticatedUser = initialUser;
-    this.currentSessionToken = 'jwt_adm_session_live_8912';
+    // Aucune session ni identité de démonstration au démarrage.
+    this.currentAuthenticatedUser = null;
+    this.currentSessionToken = null;
   }
 
   // ==========================================
@@ -89,7 +88,7 @@ export class AuthService {
     }
   }
 
-  public logout(): void {
+  public logout(): void {\n    void import('@/lib/supabase/client').then(({ createClient }) => createClient().auth.signOut());
     if (this.currentSessionToken) {
       const activeSession = this.sessions.find(s => s.token === this.currentSessionToken);
       if (activeSession) {
@@ -135,21 +134,10 @@ export class AuthService {
     return false;
   }
 
-  public resetPassword(email: string, newPassword?: string): { success: boolean; message: string; tempPassword?: string } {
-    const cleanEmail = email.trim().toLowerCase();
-    const user = this.users.find(u => u.email.toLowerCase() === cleanEmail);
-    if (!user) {
-      return { success: false, message: 'Aucun utilisateur trouvé avec cette adresse email.' };
-    }
-
-    const generatedPassword = newPassword || `BatiProm@${Math.floor(1000 + Math.random() * 9000)}`;
-    USER_PASSWORDS[cleanEmail] = generatedPassword;
-    user.must_change_password = true;
-
+  public resetPassword(_email: string, _newPassword?: string): { success: boolean; message: string; tempPassword?: string } {
     return {
-      success: true,
-      message: `Le mot de passe a été réinitialisé avec succès pour ${user.prenom} ${user.nom}.`,
-      tempPassword: generatedPassword
+      success: false,
+      message: 'La réinitialisation des mots de passe doit être effectuée par Supabase Auth via un e-mail de récupération.',
     };
   }
 
