@@ -399,8 +399,8 @@ export const AdministrationView: React.FC = () => {
       if (matrixRoleFocus !== 'ALL') {
         return r.id === matrixRoleFocus || r.code === 'ADMINISTRATEUR';
       }
-      if (matrixRoleCategoryFilter === 'CENTRAL') return r.niveau_hierarchique <= 2 || r.code === 'ADMINISTRATEUR';
-      if (matrixRoleCategoryFilter === 'CHANTIER') return r.niveau_hierarchique > 2 || r.code === 'ADMINISTRATEUR';
+      if (matrixRoleCategoryFilter === 'CENTRAL') return r.type_acces !== 'CHANTIER' || r.code === 'ADMINISTRATEUR';
+      if (matrixRoleCategoryFilter === 'CHANTIER') return r.type_acces !== 'CENTRAL' || r.code === 'ADMINISTRATEUR';
       return true;
     });
   }, [roles, matrixRoleCategoryFilter, matrixRoleFocus]);
