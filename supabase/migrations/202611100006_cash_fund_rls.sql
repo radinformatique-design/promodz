@@ -102,6 +102,7 @@ CREATE POLICY mouvements_caisse_select_scope ON public.comptabilite_mouvements_c
       WHERE cc.id = comptabilite_mouvements_caisse.caisse_id
         AND c.entreprise_id = public.current_company_id()
         AND public.can_access_chantier(c.id)
+        AND (public.is_company_accountant() OR public.has_app_permission('CAISSE', 'CONSULTER'))
     )
   );
 
@@ -142,6 +143,7 @@ CREATE POLICY demandes_caisse_select_scope ON public.comptabilite_demandes_caiss
       WHERE cc.id = comptabilite_demandes_caisse.caisse_id
         AND c.entreprise_id = public.current_company_id()
         AND public.can_access_chantier(c.id)
+        AND (public.is_company_accountant() OR public.has_app_permission('CAISSE', 'CONSULTER'))
     )
   );
 
