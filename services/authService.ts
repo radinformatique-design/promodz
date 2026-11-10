@@ -13,9 +13,22 @@ import {
   PermissionAction,
   UserRole
 } from '../types/database';
-import {
-    MODULES_LIST
-} from '../data/demoData';
+const MODULES_LIST: { code: ModuleCode; libelle: string; isCentralOnly: boolean }[] = [
+  { code: 'DASHBOARD', libelle: 'Tableau de bord', isCentralOnly: false },
+  { code: 'CHANTIERS', libelle: 'Chantiers', isCentralOnly: false },
+  { code: 'TECHNIQUE', libelle: 'Technique & Métrés', isCentralOnly: false },
+  { code: 'MATERIEL', libelle: 'Matériel & Parc Engins', isCentralOnly: true },
+  { code: 'MAGASIN', libelle: 'Magasin & Stocks', isCentralOnly: false },
+  { code: 'APPROVISIONNEMENTS', libelle: 'Approvisionnements & Achats', isCentralOnly: false },
+  { code: 'RH', libelle: 'Ressources Humaines', isCentralOnly: true },
+  { code: 'COMMERCIAL', libelle: 'Commercial & VEFA', isCentralOnly: true },
+  { code: 'COMPTABILITE', libelle: 'Comptabilité & Fiscalité', isCentralOnly: true },
+  { code: 'JURIDIQUE', libelle: 'Affaires Juridiques', isCentralOnly: true },
+  { code: 'ADMINISTRATION', libelle: 'Administration & Sécurité', isCentralOnly: true },
+  { code: 'DOCUMENTS', libelle: 'Documents & GED', isCentralOnly: false },
+  { code: 'NOTIFICATIONS', libelle: 'Notifications & Alertes', isCentralOnly: false },
+  { code: 'PARAMETRES', libelle: 'Paramètres Généraux', isCentralOnly: true },
+];
 
 export interface VerificationResult {
   allowed: boolean;
