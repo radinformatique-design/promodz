@@ -55,8 +55,20 @@ CREATE POLICY caisse_select_scope ON public.comptabilite_caisses_chantier
   );
 
 DROP POLICY IF EXISTS caisse_manage_central ON public.comptabilite_caisses_chantier;
-CREATE POLICY caisse_manage_central ON public.comptabilite_caisses_chantier
-  FOR ALL TO authenticated
+CREATE POLICY caisse_insert_central ON public.comptabilite_caisses_chantier
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.chantiers c
+      WHERE c.id = comptabilite_caisses_chantier.chantier_id
+        AND c.entreprise_id = public.current_company_id()
+        AND public.is_company_accountant()
+        AND public.has_app_permission('CAISSE', 'GERER_PLAFOND')
+    )
+  );
+
+CREATE POLICY caisse_update_central ON public.comptabilite_caisses_chantier
+  FOR UPDATE TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.chantiers c
