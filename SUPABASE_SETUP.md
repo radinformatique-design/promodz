@@ -13,6 +13,12 @@ Dans **Authentication → URL Configuration** de Supabase :
 
 Renseigner `NEXT_PUBLIC_APP_URL` avec l'URL de l'environnement courant. Les invitations et les liens de récupération utilisent ces URL.
 
+## 2. Configurer les URLs Auth
+Dans **Supabase → Authentication → URL Configuration** :
+- définir la Site URL sur l'URL réelle de BatiProm ;
+- ajouter les Redirect URLs pour `http://localhost:3000/auth/callback`, `http://localhost:3000/auth/reset-password` et les mêmes chemins sur le domaine de production ;
+- utiliser HTTPS en production.
+
 ## 2. Installer et créer les tables
 ```bash
 npm install
