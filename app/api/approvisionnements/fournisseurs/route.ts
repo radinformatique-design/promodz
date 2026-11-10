@@ -5,10 +5,23 @@ import { getCurrentAppProfile, isCompanyAdmin, hasAnyRole } from '@/lib/auth/cur
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  const fournisseurs = await prisma.fournisseur.findMany({
-    where: { entreprise_id: current.profile.entreprise_id },
-    orderBy: { raison_sociale: 'asc' },
-  });
+  if (current.profile.type === 'CENTRAL' &&
+      !isCompanyAdmin(current.profile) &&
+      !hasAnyRole(current.profile, ['RESPONSABLE_APPROVISIONNEMENTS','RESPONSABLE_COMPTABILITE'])) {
+    return NextResponse.json({ error: 'Accès aux coordonnées fournisseurs réservé aux services concernés.' }, { status: 403 });
+  }
+  const where = { entreprise_id: current.profile.entreprise_id };
+  const fournisseurs = current.profile.type === 'CHANTIER'
+    ? await prisma.fournisseur.findMany({
+        where,
+        select: {
+          id: true, raison_sociale: true, code_fournisseur: true, categorie: true,
+          adresse: true, wilaya: true, telephone: true, email: true,
+          actif: true, note_evaluation: true, created_at: true,
+        },
+        orderBy: { raison_sociale: 'asc' },
+      })
+    : await prisma.fournisseur.findMany({ where, orderBy: { raison_sociale: 'asc' } });
   return NextResponse.json(fournisseurs);
 }
 
