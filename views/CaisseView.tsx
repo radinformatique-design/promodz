@@ -77,6 +77,8 @@ export const CaisseView: React.FC = () => {
   const canExit = hasPermission('SORTIR');
   const canAsk = hasPermission('DEMANDER');
   const canSupply = hasPermission('APPROVISIONNER');
+  const effectiveMovementType: 'SORTIE' | 'APPROVISIONNEMENT' =
+    canExit && canSupply ? movementType : canExit ? 'SORTIE' : 'APPROVISIONNEMENT';
   const canManageCeiling = roleCode === 'RESPONSABLE_COMPTABILITE' || hasPermission('GERER_PLAFOND');
   const canDecide = roleCode === 'RESPONSABLE_COMPTABILITE' || hasPermission('TRAITER_DEMANDE');
   const [cashChantierId, setCashChantierId] = useState('');
@@ -119,7 +121,7 @@ export const CaisseView: React.FC = () => {
     return funds.filter((fund) => fund.chantier.id === cashChantierId);
   }, [funds, cashChantierId]);
 
-  const selectedFund = selectedChantierId === 'ALL' ? null : (visibleFunds[0] || null);
+  const selectedFund = visibleFunds[0] || null;
   const totalCeiling = visibleFunds.reduce((sum, fund) => sum + Number(fund.plafond || 0), 0);
   const totalBalance = visibleFunds.reduce((sum, fund) => sum + Number(fund.solde || 0), 0);
   const pendingRequests = visibleFunds.flatMap((fund) =>
@@ -255,9 +257,9 @@ export const CaisseView: React.FC = () => {
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <Metric title="Plafond autorisé" value={money(selectedChantierId === 'ALL' ? totalCeiling : (selectedFund?.plafond || 0))} icon={<Wallet className="h-5 w-5" />} />
-            <Metric title="Solde disponible" value={money(selectedChantierId === 'ALL' ? totalBalance : (selectedFund?.solde || 0))} icon={<ArrowDownLeft className="h-5 w-5" />} />
-            <Metric title="Montant consommé" value={money(selectedChantierId === 'ALL' ? totalCeiling - totalBalance : Number(selectedFund?.plafond || 0) - Number(selectedFund?.solde || 0))} icon={<ArrowUpRight className="h-5 w-5" />} />
+            <Metric title="Plafond autorisé" value={money(selectedFund?.plafond || totalCeiling)} icon={<Wallet className="h-5 w-5" />} />
+            <Metric title="Solde disponible" value={money(selectedFund?.solde || totalBalance)} icon={<ArrowDownLeft className="h-5 w-5" />} />
+            <Metric title="Montant consommé" value={money(Number(selectedFund?.plafond || totalCeiling) - Number(selectedFund?.solde || totalBalance))} icon={<ArrowUpRight className="h-5 w-5" />} />
           </div>
 
           {selectedChantierId === 'ALL' && (
@@ -269,7 +271,7 @@ export const CaisseView: React.FC = () => {
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
                 <h2 className="font-bold text-slate-900">Enregistrer un mouvement</h2>
                 <p className="mt-1 text-xs text-slate-500">Chaque sortie est historisée et notifiée automatiquement au siège.</p>
-                <form onSubmit={(e) => void submitMovement(e, movementType)} className="mt-4 space-y-3">
+                <form onSubmit={(e) => void submitMovement(e, effectiveMovementType)} className="mt-4 space-y-3">
                   {canExit && canSupply && (
                     <select value={movementType} onChange={(e) => setMovementType(e.target.value as 'SORTIE' | 'APPROVISIONNEMENT')} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
                       <option value="SORTIE">Sortie de caisse</option>
@@ -282,7 +284,7 @@ export const CaisseView: React.FC = () => {
                   </div>
                   <input required value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Motif du mouvement" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
                   <button disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                    <Plus className="h-4 w-4" /> {movementType === 'SORTIE' ? 'Enregistrer la sortie' : 'Enregistrer l’approvisionnement'}
+                    <Plus className="h-4 w-4" /> {effectiveMovementType === 'SORTIE' ? 'Enregistrer la sortie' : 'Enregistrer l’approvisionnement'}
                   </button>
                 </form>
               </section>
