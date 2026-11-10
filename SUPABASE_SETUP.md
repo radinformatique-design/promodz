@@ -14,10 +14,18 @@ npx prisma db push
 
 Le schéma Prisma reste la source de vérité pour les 31 modèles métier existants. Pour les environnements durables, convertir ensuite les changements de schéma en migrations versionnées avec `npx prisma migrate dev --name init` puis déployer avec `npx prisma migrate deploy`.
 
-## 3. Activer les premières politiques RLS
-Après création des tables, exécuter le SQL de `supabase/migrations/202611100001_auth_profiles_and_rls.sql` dans le SQL Editor Supabase.
+## 3. Activer les politiques RLS
+Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique : `001`, `002`, `003`, `004`, puis `005`.
 
-> Attention : cette première migration sécurise les tables d'identité, d'entreprise, de chantiers et d'affectations. Elle ne constitue pas encore la matrice RLS exhaustive des 31 tables. Avant la mise en production, appliquer des politiques équivalentes à chaque table métier et vérifier les accès depuis des comptes de test de deux entreprises et de plusieurs chantiers.
+- `001` : Auth, profils, entreprise et affectations.
+- `002` : accès central aux chantiers de l'entreprise.
+- `003` : rattachement des fournisseurs à l'entreprise.
+- `004` : politiques métier pour achats, RH, matériel, comptabilité, commercial, juridique, notifications, documents et audit.
+- `005` : clés entreprise explicites pour les données qui peuvent ne pas être rattachées à un chantier.
+
+Les migrations `003` et `005` s'arrêtent volontairement si elles trouvent des lignes sans entreprise. La base cible étant neuve, ce contrôle doit réussir après `prisma db push`. Sur une base déjà alimentée, il faut d'abord attribuer les bons `entreprise_id` aux lignes concernées.
+
+Les politiques couvrent les 31 tables actuelles du schéma. Cela ne remplace pas les contrôles des Route Handlers Prisma : une connexion Prisma directe ne reprend pas automatiquement le JWT Supabase et contourne donc le RLS de la session. Avant la production, tester les deux voies (Supabase/PostgREST et API Prisma) avec au moins deux entreprises et plusieurs rôles/chantiers.
 
 ## 4. Créer le premier administrateur
 1. Dans **Authentication → Users**, créer le compte administrateur avec son adresse e-mail.
@@ -33,7 +41,7 @@ Après création des tables, exécuter le SQL de `supabase/migrations/2026111000
 - Les mots de passe de connexion sont stockés uniquement dans les variables d'environnement locales / du fournisseur d'hébergement.
 
 ## État de cette étape
-Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_user_id`, le fichier d'environnement exemple et une première base RLS sont ajoutés. Les services UI et tous les Route Handlers doivent encore être migrés vers des opérations serveur authentifiées ; Prisma utilise une connexion PostgreSQL distincte et ne bénéficie pas automatiquement des politiques RLS de la session Supabase.
+Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_user_id`, le flux de récupération de mot de passe, les scripts de bootstrap et les politiques RLS des 31 tables sont ajoutés. Plusieurs API métier sont connectées à Prisma avec contrôles de rôle et de périmètre ; les autres écrans et opérations doivent encore être migrés et testés. Prisma utilise une connexion PostgreSQL distincte et ne bénéficie pas automatiquement des politiques RLS de la session Supabase.
 
 
 ## API métier ajoutées sur cette branche
