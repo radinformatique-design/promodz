@@ -442,6 +442,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         invoiceRows,
         notificationRows,
         auditRows,
+        pointageRows,
+        leaveRows,
         userRows,
         rbac,
       ] = await Promise.all([
@@ -453,6 +455,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         readApi('/api/approvisionnements/factures'),
         readApi('/api/notifications'),
         readApi('/api/audit-logs'),
+        readApi('/api/rh/pointages'),
+        readApi('/api/rh/conges'),
         readApi('/api/admin/users'),
         readApi('/api/admin/rbac'),
       ]);
@@ -593,6 +597,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         date_lecture: row.date_lecture || undefined,
         lien_action: row.lien || undefined,
       })) as unknown as Notification[]);
+
+      if (pointageRows) setPointages(pointageRows.map((row: any) => ({
+        ...row,
+        employe_nom: [row.employe?.prenom, row.employe?.nom].filter(Boolean).join(' '),
+        employe_matricule: row.employe?.matricule || '',
+        employe_categorie: row.employe?.fonction || 'OUVRIER',
+        statut: row.statut_pointage,
+        heures_travaillees: Number(row.heures_normales || 0) + Number(row.heures_sup || 0),
+        saisi_par_id: row.valide_par || '',
+        saisi_par_nom: '',
+        verrouille: false,
+        updated_at: row.created_at,
+      })) as unknown as PointageLigne[]);
+
+      if (leaveRows) setCongesAbsences(leaveRows.map((row: any) => ({
+        ...row,
+        employe_nom: [row.employe?.prenom, row.employe?.nom].filter(Boolean).join(' '),
+        employe_matricule: row.employe?.matricule || '',
+        chantier_id: row.employe?.chantier_actuel_id || '',
+        nombre_jours: row.jours_ouvrables,
+        motif: row.motif || '',
+        statut: row.statut === 'ACCEPTE' ? 'VALIDE' : row.statut === 'REFUSE' ? 'REFUSE' : 'EN_ATTENTE',
+      })) as unknown as CongeAbsence[]);
 
       if (auditRows) setAuditLogs(auditRows.map((row: any) => ({
         ...row,
