@@ -350,7 +350,7 @@ export const AdministrationView: React.FC = () => {
   // Cocher / Décocher toutes les actions d'un module pour un rôle spécifique
   const handleToggleRoleModule = (roleId: string, modCode: ModuleCode) => {
     if (roles.find(role => role.id === roleId)?.code === 'ADMINISTRATEUR') return;
-    const permIds = ACTIONS_LIST.map(a => `perm-${modCode.toLowerCase()}-${a.toLowerCase()}`);
+    const permIds = permissions.filter(permission => permission.module === modCode).map(permission => permission.id);
     const allGranted = permIds.every(pid =>
       matrixState.some(rp => rp.role_id === roleId && rp.permission_id === pid)
     );
