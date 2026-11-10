@@ -272,14 +272,14 @@ interface AppContextType {
   entretiens: Entretien[];
   piecesRemplacables: PieceRemplacable[];
   
-  ajouterVehicule: (data: Omit<Vehicule, 'id' | 'created_at'>) => Vehicule;
-  modifierVehicule: (id: string, updates: Partial<Vehicule>) => Vehicule | null;
-  supprimerVehicule: (id: string) => boolean;
-  affecterVehiculeChantier: (vehiculeId: string, chantierId: string, chantierNom: string, conducteurNom: string, motif?: string, bonTransfertRef?: string) => Vehicule | null;
-  mettreAJourCompteur: (vehiculeId: string, nouveauKm?: number, nouvellesHeures?: number) => Vehicule | null;
-  enregistrerEntretien: (data: Omit<Entretien, 'id' | 'created_at'>) => Entretien;
-  declarerPanne: (vehiculeId: string, description: string, gravite?: 'FAIBLE' | 'MOYENNE' | 'CRITIQUE' | 'IMMOBILISATION', garageNom?: string, coutEstime?: number) => Entretien;
-  renouvelerAssurance: (vehiculeId: string, nouvelleCompagnie: string, nouvellePolice: string, dateDebut: string, dateFin: string, coutDzd: number, quittanceRef?: string) => Vehicule | null;
+  ajouterVehicule: (data: Omit<Vehicule, 'id' | 'created_at'>) => Promise<Vehicule | null>;
+  modifierVehicule: (id: string, updates: Partial<Vehicule>) => Promise<Vehicule | null>;
+  supprimerVehicule: (id: string) => Promise<boolean>;
+  affecterVehiculeChantier: (vehiculeId: string, chantierId: string, chantierNom: string, conducteurNom: string, motif?: string, bonTransfertRef?: string) => Promise<Vehicule | null>;
+  mettreAJourCompteur: (vehiculeId: string, nouveauKm?: number, nouvellesHeures?: number) => Promise<Vehicule | null>;
+  enregistrerEntretien: (data: Omit<Entretien, 'id' | 'created_at'>) => Promise<Entretien | null>;
+  declarerPanne: (vehiculeId: string, description: string, gravite?: 'FAIBLE' | 'MOYENNE' | 'CRITIQUE' | 'IMMOBILISATION', garageNom?: string, coutEstime?: number) => Promise<Entretien | null>;
+  renouvelerAssurance: (vehiculeId: string, nouvelleCompagnie: string, nouvellePolice: string, dateDebut: string, dateFin: string, coutDzd: number, quittanceRef?: string) => Promise<Vehicule | null>;
   gererPieceRemplacable: (data: Omit<PieceRemplacable, 'id' | 'created_at'>) => PieceRemplacable;
   permuterPneus: (vehiculeId: string, pieceId1: string, pieceId2: string, km: number, motif: string, operateur: string) => Promise<boolean>;
   remplacerPieceRemplacable: (pieceId: string, nouvellePiece: Omit<PieceRemplacable, 'id' | 'created_at'>, motif: string, note?: string) => Promise<PieceRemplacable | null>;
