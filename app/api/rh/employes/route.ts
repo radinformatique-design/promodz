@@ -17,11 +17,22 @@ export async function GET() {
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
   if (current.profile.type === 'CENTRAL' && !canManageHr(current.profile)) return NextResponse.json({ error: 'Accès au module RH réservé au service RH.' }, { status: 403 });
   const ids = await getScope(current.profile);
-  const rows = await prisma.employe.findMany({
-    where: { chantier_actuel_id: { in: ids } },
-    include: { chantierActuel: true },
-    orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
-  });
+  const rows = current.profile.type === 'CHANTIER'
+    ? await prisma.employe.findMany({
+        where: { chantier_actuel_id: { in: ids } },
+        select: {
+          id: true, matricule: true, nom: true, prenom: true, fonction: true,
+          qualification: true, type_contrat: true, chantier_actuel_id: true,
+          statut: true, telephone: true,
+          chantierActuel: { select: { id: true, nom_projet: true, wilaya: true, commune: true } },
+        },
+        orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
+      })
+    : await prisma.employe.findMany({
+        where: { chantier_actuel_id: { in: ids } },
+        include: { chantierActuel: true },
+        orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
+      });
   return NextResponse.json(rows);
 }
 
