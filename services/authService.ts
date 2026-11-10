@@ -20,6 +20,7 @@ const MODULES_LIST: { code: ModuleCode; libelle: string; isCentralOnly: boolean 
   { code: 'MATERIEL', libelle: 'Matériel & Parc Engins', isCentralOnly: true },
   { code: 'MAGASIN', libelle: 'Magasin & Stocks', isCentralOnly: false },
   { code: 'APPROVISIONNEMENTS', libelle: 'Approvisionnements & Achats', isCentralOnly: false },
+  { code: 'CAISSE', libelle: 'Caisse de fonds de roulement', isCentralOnly: false },
   { code: 'RH', libelle: 'Ressources Humaines', isCentralOnly: true },
   { code: 'COMMERCIAL', libelle: 'Commercial & VEFA', isCentralOnly: true },
   { code: 'COMPTABILITE', libelle: 'Comptabilité & Fiscalité', isCentralOnly: true },
