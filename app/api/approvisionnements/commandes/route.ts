@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile)) return NextResponse.json({ error: 'Droits administrateur requis.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_APPROVISIONNEMENTS'])) return NextResponse.json({ error: 'Émission des commandes réservée au service approvisionnements.' }, { status: 403 });
   const body = await request.json();
   if (!body?.id || !['EMIS', 'ANNULE'].includes(body.statut)) return NextResponse.json({ error: 'Statut de commande invalide.' }, { status: 400 });
   const target = await prisma.bonCommande.findFirst({
