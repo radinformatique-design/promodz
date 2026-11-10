@@ -674,6 +674,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setRoles(rbac.roles || []);
         setPermissions(rbac.permissions || []);
         setRolePermissions(rbac.rolePermissions || []);
+        authService.updateAuthorizationData(
+          rbac.roles || [],
+          rbac.permissions || [],
+          rbac.rolePermissions || [],
+          userRows || undefined
+        );
       }
     } catch (error) {
       console.error('[BatiProm] Chargement des données PostgreSQL impossible :', error);
@@ -689,6 +695,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const data = await response.json();
         if (!active || !data.user) return;
         setCurrentUser(data.user);
+        authService.restoreAuthenticatedSession(
+          data.user,
+          data.roles || [],
+          data.permissions || [],
+          data.rolePermissions || []
+        );
         setUtilisateurs((previous) => previous.some((item) => item.id === data.user.id)
           ? previous.map((item) => item.id === data.user.id ? data.user : item)
           : [...previous, data.user]);
