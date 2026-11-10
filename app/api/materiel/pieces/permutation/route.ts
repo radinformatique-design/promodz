@@ -30,11 +30,11 @@ export async function POST(request: Request) {
     const rows = await prisma.$transaction([
       prisma.pieceRemplacableVehicule.update({
         where: { id: p1.id },
-        data: { position: p2.position, historique_permutations: [history1, ...((p1.historique_permutations as any[]) || [])] },
+        data: { position: p2.position, historique_permutations: [history1, ...((p1.historique_permutations as any[]) || [])] as any },
       }),
       prisma.pieceRemplacableVehicule.update({
         where: { id: p2.id },
-        data: { position: p1.position, historique_permutations: [history2, ...((p2.historique_permutations as any[]) || [])] },
+        data: { position: p1.position, historique_permutations: [history2, ...((p2.historique_permutations as any[]) || [])] as any },
       }),
     ]);
     return NextResponse.json(rows);
