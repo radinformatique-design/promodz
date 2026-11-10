@@ -17,7 +17,10 @@ export async function GET() {
     },
     orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
   });
-  return NextResponse.json(users);
+  return NextResponse.json(users.map((user) => ({
+    ...user,
+    chantiers_assignes: user.affectations.map((assignment) => assignment.chantier_id),
+  })));
 }
 
 export async function POST(request: Request) {
