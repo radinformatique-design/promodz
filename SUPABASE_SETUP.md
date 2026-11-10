@@ -21,10 +21,10 @@ Après création des tables, exécuter le SQL de `supabase/migrations/2026111000
 
 ## 4. Créer le premier administrateur
 1. Dans **Authentication → Users**, créer le compte administrateur avec son adresse e-mail.
-2. Créer l'entreprise, le rôle administrateur et le profil métier dans les tables `entreprises`, `roles` et `utilisateurs`.
-3. Renseigner `utilisateurs.auth_user_id` avec l'UUID du compte créé dans Supabase Auth.
-4. Créer les permissions et les lignes `role_permissions` nécessaires.
-5. Ne pas créer d'utilisateur de démonstration automatiquement en production.
+2. Ouvrir `supabase/bootstrap-first-admin.sql`, remplacer les champs `REPLACE_*` par les informations réelles de l'entreprise et l'UUID Auth du compte.
+3. Exécuter le script une seule fois dans le SQL Editor Supabase. Il vérifie l'existence de l'UUID Auth et la correspondance de l'e-mail, puis crée l'entreprise, le rôle administrateur, le profil et les paramètres DZD.
+4. Ne pas créer d'utilisateur de démonstration automatiquement en production.
+
 
 ## 5. Connexion Prisma
 - `DATABASE_URL` : chaîne de connexion pooler Supabase pour l'application.
