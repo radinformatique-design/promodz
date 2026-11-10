@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentAppProfile, assignedChantierIds } from '@/lib/auth/current-app-profile';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET() {
   try {
     const current = await getCurrentAppProfile();
