@@ -5,6 +5,7 @@ import { getCurrentAppProfile, assignedChantierIds } from '@/lib/auth/current-ap
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
+  if (current.profile.type === 'CENTRAL' && !['ADMINISTRATEUR','RESPONSABLE_APPROVISIONNEMENTS'].includes(current.profile.role.code)) return NextResponse.json({ error: 'Accès aux réceptions réservé aux services concernés.' }, { status: 403 });
   const ids = current.profile.type === 'CHANTIER'
     ? assignedChantierIds(current.profile)
     : (await prisma.chantier.findMany({ where: { entreprise_id: current.profile.entreprise_id }, select: { id: true } })).map(x => x.id);
