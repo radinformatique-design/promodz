@@ -41,10 +41,8 @@ CREATE POLICY materiel_engins_select_scope ON public.materiel_engins
   FOR SELECT TO authenticated
   USING (
     entreprise_id = public.current_company_id()
-    AND (
-      (chantier_actuel_id IS NOT NULL AND public.can_access_chantier(chantier_actuel_id))
-      OR (chantier_actuel_id IS NULL AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL']))
-    )
+    AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_MATERIEL'])
+    AND (chantier_actuel_id IS NULL OR public.can_access_chantier(chantier_actuel_id))
   );
 CREATE POLICY materiel_engins_insert_central ON public.materiel_engins
   FOR INSERT TO authenticated
@@ -219,14 +217,7 @@ CREATE POLICY comptes_bancaires_select_scope ON public.comptes_bancaires
   FOR SELECT TO authenticated
   USING (
     entreprise_id = public.current_company_id()
-    AND (
-      public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMPTABILITE'])
-      OR (
-        public.current_app_user_type() = 'CHANTIER'
-        AND chantier_dedie_id IS NOT NULL
-        AND public.can_access_chantier(chantier_dedie_id)
-      )
-    )
+    AND public.current_user_has_any_role(ARRAY['ADMINISTRATEUR','RESPONSABLE_COMPTABILITE'])
   );
 
 DROP POLICY IF EXISTS factures_select_company ON public.appro_factures_fournisseurs;
