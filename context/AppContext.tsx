@@ -427,26 +427,194 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const loadApplicationData = async () => {
     try {
-      const response = await fetch('/api/app/bootstrap', { cache: 'no-store' });
-      if (!response.ok) return;
-      const data = await response.json();
-      if (data.entreprise) setEntreprise(data.entreprise);
-      if (data.parametresGeneraux) setParametresGeneraux(data.parametresGeneraux);
-      setAllChantiers(data.chantiers || []);
-      setEmployes(data.employes || []);
-      const [usersResponse, rbacResponse] = await Promise.all([
-        fetch('/api/admin/users', { cache: 'no-store' }),
-        fetch('/api/admin/rbac', { cache: 'no-store' }),
+      const readApi = async (path: string) => {
+        const response = await fetch(path, { cache: 'no-store' });
+        if (!response.ok) return null;
+        return response.json();
+      };
+
+      const [
+        bootstrap,
+        supplierRows,
+        demandRows,
+        orderRows,
+        receptionRows,
+        invoiceRows,
+        notificationRows,
+        auditRows,
+        userRows,
+        rbac,
+      ] = await Promise.all([
+        readApi('/api/app/bootstrap'),
+        readApi('/api/approvisionnements/fournisseurs'),
+        readApi('/api/approvisionnements/demandes'),
+        readApi('/api/approvisionnements/commandes'),
+        readApi('/api/approvisionnements/receptions'),
+        readApi('/api/approvisionnements/factures'),
+        readApi('/api/notifications'),
+        readApi('/api/audit-logs'),
+        readApi('/api/admin/users'),
+        readApi('/api/admin/rbac'),
       ]);
-      if (usersResponse.ok) setUtilisateurs(await usersResponse.json());
-      if (rbacResponse.ok) {
-        const rbac = await rbacResponse.json();
+
+      if (bootstrap) {
+        if (bootstrap.entreprise) setEntreprise(bootstrap.entreprise);
+        if (bootstrap.parametresGeneraux) setParametresGeneraux(bootstrap.parametresGeneraux);
+        setAllChantiers(bootstrap.chantiers || []);
+        setEmployes((bootstrap.employes || []).map((employee: any) => ({
+          ...employee,
+          entreprise_id: bootstrap.entreprise?.id || '',
+          date_naissance: employee.date_naissance || '',
+          lieu_naissance: '',
+          wilaya_naissance: '',
+          nationalite: 'Algérienne',
+          nin: '',
+          num_cnas: employee.num_securite_sociale || '',
+          commune: employee.chantierActuel?.commune || '',
+          wilaya: employee.chantierActuel?.wilaya || '',
+          personne_urgence_nom: '',
+          personne_urgence_tel: '',
+          categorie: employee.fonction || 'OUVRIER',
+          date_embauche: employee.date_recrutement,
+          chantier_actuel_nom: employee.chantierActuel?.nom_projet || '',
+          date_affectation_actuelle: '',
+          documents_fournis: {
+            carte_chifa_cnas: false,
+            certificat_medical_aptitude: false,
+            copie_cni_nin: false,
+            attestation_travail_ou_diplome: false,
+            photos_identite: false,
+            fiche_anthropometrique: false,
+          },
+          updated_at: employee.created_at,
+        })) as unknown as Employe[]);
+      }
+
+      if (supplierRows) setFournisseurs(supplierRows.map((row: any) => ({
+        ...row,
+        nom_fournisseur: row.raison_sociale,
+        forme_juridique: 'SARL',
+        nif: row.nif || '',
+        rc: row.rc || '',
+        nis: row.nis || '',
+        contact_commercial: '',
+        delai_livraison_moyen_jours: 0,
+        conditions_paiement: '',
+        note_qualite: Number(row.note_evaluation ?? 4),
+      })) as unknown as Fournisseur[]);
+
+      if (demandRows) setDemandesAchat(demandRows.map((row: any) => {
+        const line = Array.isArray(row.lignes_articles) ? row.lignes_articles[0] || {} : {};
+        return {
+          ...row,
+          chantier_nom: row.chantier?.nom_projet || '',
+          demandeur_nom: [row.demandeur?.prenom, row.demandeur?.nom].filter(Boolean).join(' '),
+          demandeur_role: row.demandeur?.role?.libelle || '',
+          designation_produit: line.designation || line.designation_produit || row.description,
+          famille_article: line.famille_article || line.categorie || '',
+          quantite_demandee: Number(line.quantite_demandee ?? line.quantite ?? 0),
+          unite_mesure: line.unite_mesure || line.unite || 'Unité',
+          niveau_urgence: row.priorite,
+          justification: row.description,
+          date_besoin_chantier: line.date_besoin_chantier || '',
+          estimation_budget_dzd: Number(row.montant_estime || 0),
+          historique_validations: [],
+          bon_commande_id: row.bonsCommande?.[0]?.id,
+        };
+      }) as unknown as DemandeAchat[]);
+
+      if (orderRows) setBonsCommande(orderRows.map((row: any) => {
+        const line = Array.isArray(row.lignes_articles) ? row.lignes_articles[0] || {} : {};
+        return {
+          ...row,
+          demande_achat_ref: row.demandeAchat?.numero_da || '',
+          fournisseur_nom: row.fournisseur?.raison_sociale || '',
+          fournisseur_nif: row.fournisseur?.nif || '',
+          fournisseur_rc: row.fournisseur?.rc || '',
+          fournisseur_telephone: row.fournisseur?.telephone || '',
+          chantier_destinataire_id: row.chantier_id,
+          chantier_destinataire_nom: row.chantier?.nom_projet || '',
+          adresse_livraison: row.chantier?.adresse_site || '',
+          contact_reception_magasinier: '',
+          date_livraison_prevue: row.delai_livraison || row.date_commande,
+          designation_marchandise: line.designation || line.designation_produit || '',
+          quantite_commandee: Number(line.quantite_commandee ?? line.quantite ?? 0),
+          unite_mesure: line.unite_mesure || line.unite || 'Unité',
+          prix_unitaire_ht_dzd: Number(line.prix_unitaire_ht_dzd ?? line.prix_unitaire_ht ?? 0),
+          montant_total_ht_dzd: Number(row.total_ht || 0),
+          taux_tva_pct: Number(row.total_ht) > 0 ? Number(row.total_tva) / Number(row.total_ht) * 100 : 0,
+          montant_tva_dzd: Number(row.total_tva || 0),
+          montant_total_ttc_dzd: Number(row.total_ttc || 0),
+          delai_paiement: '',
+          statut: row.statut === 'RECU_PARTIEL' ? 'LIVRE_PARTIEL' : row.statut === 'RECU_TOTAL' ? 'LIVRE_TOTAL' : row.statut,
+        };
+      }) as unknown as BonCommande[]);
+
+      if (receptionRows) setReceptionsChantier(receptionRows.map((row: any) => {
+        const lines = Array.isArray(row.lignes_recues) ? row.lignes_recues : [];
+        const quantity = lines.reduce((sum: number, line: any) => sum + Number(line.quantite_recue ?? line.quantite ?? 0), 0);
+        return {
+          ...row,
+          numero_bl_fournisseur: row.numero_bl,
+          numero_br_interne: row.numero_bl,
+          bon_commande_ref: row.bonCommande?.numero_bc || '',
+          chantier_nom: row.chantier?.nom_projet || '',
+          magasinier_id: currentUser?.id || '',
+          magasinier_nom: currentUser ? [currentUser.prenom, currentUser.nom].join(' ') : '',
+          fournisseur_nom: row.bonCommande?.fournisseur?.raison_sociale || '',
+          quantite_recue: quantity,
+          unite_mesure: lines[0]?.unite_mesure || lines[0]?.unite || 'Unité',
+          quantite_conforme: row.statut_conforme ? quantity : 0,
+          quantite_rejetee: row.statut_conforme ? 0 : quantity,
+          conformite_qualite: row.statut_conforme ? 'CONFORME' : 'NON_CONFORME',
+          visa_magasinier: true,
+          statut: row.statut_conforme ? 'RECEPTIONNE_CONFORME' : 'AVEC_RESERVES',
+        };
+      }) as unknown as BonLivraisonReception[]);
+
+      if (invoiceRows) setFacturesFournisseurs(invoiceRows.map((row: any) => ({
+        ...row,
+        bon_commande_ref: row.bonCommande?.numero_bc || '',
+        bon_reception_ref: '',
+        fournisseur_nom: row.fournisseur?.raison_sociale || '',
+        fournisseur_nif: row.fournisseur?.nif || '',
+        chantier_id: row.bonCommande?.chantier_id || '',
+        chantier_nom: row.bonCommande?.chantier?.nom_projet || '',
+        montant_ht_dzd: Number(row.total_ht || 0),
+        montant_tva_dzd: Number(row.total_tva || 0),
+        montant_ttc_dzd: Number(row.total_ttc || 0),
+        statut_comptable: row.statut_paiement === 'PAYEE' ? 'PAYEE' : row.statut_paiement === 'PARTIELLE' ? 'BON_A_PAYER' : 'EN_ATTENTE_CONTROLE',
+      })) as unknown as FactureFournisseur[]);
+
+      if (notificationRows) setNotifications(notificationRows.map((row: any) => ({
+        ...row,
+        lu: Boolean(row.est_lue),
+        date_lecture: row.date_lecture || undefined,
+        lien_action: row.lien || undefined,
+      })) as unknown as Notification[]);
+
+      if (auditRows) setAuditLogs(auditRows.map((row: any) => ({
+        ...row,
+        utilisateur_nom: [row.utilisateur?.prenom, row.utilisateur?.nom].filter(Boolean).join(' '),
+        utilisateur_email: row.utilisateur?.email || '',
+        chantier_nom: row.chantier?.nom_projet || '',
+        entite_cible: row.table_nom,
+        entite_id: row.enregistrement_id || '',
+        adresse_ip: row.adresse_ip || '',
+        details_modifications: {
+          avant: row.donnees_anciennes || undefined,
+          apres: row.donnees_nouvelles || undefined,
+        },
+      })) as unknown as AuditLog[]);
+
+      if (userRows) setUtilisateurs(userRows);
+      if (rbac) {
         setRoles(rbac.roles || []);
         setPermissions(rbac.permissions || []);
         setRolePermissions(rbac.rolePermissions || []);
       }
     } catch (error) {
-      console.error('[BatiProm] Chargement des données Supabase impossible :', error);
+      console.error('[BatiProm] Chargement des données PostgreSQL impossible :', error);
     }
   };
 
