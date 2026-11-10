@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       ? assignedChantierIds(current.profile).includes(chantierId)
       : Boolean(await prisma.chantier.findFirst({ where: { id: chantierId, entreprise_id: current.profile.entreprise_id }, select: { id: true } }));
     if (!accessible) return NextResponse.json({ error: 'Chantier hors périmètre.' }, { status: 403 });
-  } else if (!isCompanyAdmin(current.profile)) {
+  } else if (current.profile.type !== 'CENTRAL') {
     return NextResponse.json({ error: 'Un utilisateur chantier doit rattacher son journal à un chantier.' }, { status: 403 });
   }
   const required = ['module', 'action', 'table_nom', 'description'];
