@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const { auth_user_id, nom, prenom, email, telephone, poste, type, role_id, statut, photo_url, chantiers_assignes = [] } = body ?? {};
-  if (!auth_user_id || !nom || !prenom || !email || !role_id || !['CENTRAL', 'CHANTIER'].includes(type)) {
+  if (!auth_user_id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(auth_user_id)) || !nom || !prenom || !email || !role_id || !['CENTRAL', 'CHANTIER'].includes(type)) {
     return NextResponse.json({ error: 'Données utilisateur incomplètes.' }, { status: 400 });
   }
 
@@ -116,13 +116,13 @@ export async function PATCH(request: Request) {
 
   if (Object.prototype.hasOwnProperty.call(updates, 'email')) return NextResponse.json({ error: 'Modifiez l’adresse e-mail dans Supabase Auth puis synchronisez le profil.' }, { status: 400 });
 
-  if (allowed.role_id) {
-    const role = await prisma.role.findUnique({ where: { id: String(allowed.role_id) } });
-    if (!role) return NextResponse.json({ error: 'Rôle inconnu.' }, { status: 400 });
-    const effectiveType = String(allowed.type || target.type);
-    if (effectiveType === 'CENTRAL' && role.type_acces === 'CHANTIER') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs chantier.' }, { status: 400 });
-    if (effectiveType === 'CHANTIER' && role.type_acces === 'CENTRAL') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs centraux.' }, { status: 400 });
-  }
+  const effectiveRole = allowed.role_id
+    ? await prisma.role.findUnique({ where: { id: String(allowed.role_id) } })
+    : target.role;
+  if (!effectiveRole) return NextResponse.json({ error: 'Rôle inconnu.' }, { status: 400 });
+  const effectiveType = String(allowed.type || target.type);
+  if (effectiveType === 'CENTRAL' && effectiveRole.type_acces === 'CHANTIER') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs chantier.' }, { status: 400 });
+  if (effectiveType === 'CHANTIER' && effectiveRole.type_acces === 'CENTRAL') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs centraux.' }, { status: 400 });
 
   if (chantiers_assignes !== undefined && !Array.isArray(chantiers_assignes)) {
     return NextResponse.json({ error: 'chantiers_assignes doit être un tableau.' }, { status: 400 });
