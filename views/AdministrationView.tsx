@@ -369,7 +369,7 @@ export const AdministrationView: React.FC = () => {
 
   // Cocher / Décocher tout un module pour tous les rôles cibles
   const handleToggleModuleAllRoles = (modCode: ModuleCode, grant: boolean) => {
-    const permIds = ACTIONS_LIST.map(a => `perm-${modCode.toLowerCase()}-${a.toLowerCase()}`);
+    const permIds = permissions.filter(permission => permission.module === modCode).map(permission => permission.id);
     const nonAdminRoles = roles.filter(r => r.code !== 'ADMINISTRATEUR');
 
     setMatrixState(prev => {
@@ -962,7 +962,7 @@ export const AdministrationView: React.FC = () => {
             {filteredModules.map((mod) => {
               const ModIcon = MODULE_ICONS[mod.code] || Building;
               const isCollapsed = !!collapsedModules[mod.code];
-              const modulePermIds = ACTIONS_LIST.map(a => `perm-${mod.code.toLowerCase()}-${a.toLowerCase()}`);
+              const modulePermIds = permissions.filter(permission => permission.module === mod.code).map(permission => permission.id);
               
               // Compteur de permissions accordées pour ce module
               const grantedCount = matrixState.filter(rp => modulePermIds.includes(rp.permission_id)).length;
@@ -1113,7 +1113,7 @@ export const AdministrationView: React.FC = () => {
                         <tbody className="divide-y divide-slate-100">
                           {ACTIONS_LIST.map((action) => {
                             const actionConf = ACTION_CONFIG[action];
-                            const permId = `perm-${mod.code.toLowerCase()}-${action.toLowerCase()}`;
+                            const permId = permissions.find(permission => permission.module === mod.code && permission.action === action)?.id || ''; 
 
                             return (
                               <tr key={permId} className="hover:bg-slate-50/80 transition-colors group">
