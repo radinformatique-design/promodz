@@ -101,6 +101,12 @@ export const CaisseView: React.FC = () => {
   const pendingRequests = visibleFunds.flatMap((fund) =>
     fund.demandes.filter((request) => request.statut === 'EN_ATTENTE').map((request) => ({ ...request, chantier: fund.chantier }))
   );
+  const displayedMovements = visibleFunds.flatMap((fund) =>
+    fund.mouvements.map((movement) => ({ ...movement, chantierName: fund.chantier.nom_projet }))
+  );
+  const displayedRequests = visibleFunds.flatMap((fund) =>
+    fund.demandes.map((request) => ({ ...request, chantierName: fund.chantier.nom_projet }))
+  );
 
   const submitCeiling = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -298,12 +304,12 @@ export const CaisseView: React.FC = () => {
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="flex items-center gap-2 font-bold text-slate-900"><FileText className="h-4 w-4" /> Historique des mouvements</h2>
               <div className="mt-3 divide-y divide-slate-100">
-                {(selectedFund?.mouvements || []).length === 0 && <p className="py-6 text-center text-sm text-slate-400">Aucun mouvement enregistré.</p>}
-                {(selectedFund?.mouvements || []).map((movement) => (
+                {displayedMovements.length === 0 && <p className="py-6 text-center text-sm text-slate-400">Aucun mouvement enregistré.</p>}
+                {displayedMovements.map((movement) => (
                   <div key={movement.id} className="flex items-start justify-between gap-3 py-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800">{movement.motif}</p>
-                      <p className="mt-1 text-[11px] text-slate-400">{movement.auteur?.prenom} {movement.auteur?.nom} · {new Date(movement.created_at).toLocaleString('fr-FR')}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">{movement.chantierName} · {movement.auteur?.prenom} {movement.auteur?.nom} · {new Date(movement.created_at).toLocaleString('fr-FR')}</p>
                     </div>
                     <span className={`shrink-0 text-sm font-bold ${movement.type === 'SORTIE' ? 'text-rose-600' : 'text-emerald-600'}`}>
                       {movement.type === 'SORTIE' ? '−' : '+'}{money(movement.montant)}
@@ -316,12 +322,12 @@ export const CaisseView: React.FC = () => {
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="flex items-center gap-2 font-bold text-slate-900"><Clock3 className="h-4 w-4" /> Historique des demandes</h2>
               <div className="mt-3 divide-y divide-slate-100">
-                {(selectedFund?.demandes || []).length === 0 && <p className="py-6 text-center text-sm text-slate-400">Aucune demande enregistrée.</p>}
-                {(selectedFund?.demandes || []).map((request) => (
+                {displayedRequests.length === 0 && <p className="py-6 text-center text-sm text-slate-400">Aucune demande enregistrée.</p>}
+                {displayedRequests.map((request) => (
                   <div key={request.id} className="flex items-start justify-between gap-3 py-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800">{request.motif}</p>
-                      <p className="mt-1 text-[11px] text-slate-400">{request.demandeur?.prenom} {request.demandeur?.nom} · {new Date(request.created_at).toLocaleDateString('fr-FR')}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">{request.chantierName} · {request.demandeur?.prenom} {request.demandeur?.nom} · {new Date(request.created_at).toLocaleDateString('fr-FR')}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-slate-800">{money(request.montant)}</p>
