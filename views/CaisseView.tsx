@@ -140,20 +140,21 @@ export const CaisseView: React.FC = () => {
   const submitCeiling = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!cashChantierId || cashChantierId === 'ALL' || !Number.isFinite(Number(ceiling)) || Number(ceiling) <= 0) return;
-    await send('/api/caisse', 'PUT', { chantier_id: cashChantierId, plafond: Number(ceiling) }, 'Plafond enregistré.');
-    setCeiling('');
+    const saved = await send('/api/caisse', 'PUT', { chantier_id: cashChantierId, plafond: Number(ceiling) }, 'Plafond enregistré.');
+    if (saved) setCeiling('');
   };
 
   const submitMovement = async (event: React.FormEvent, type: 'SORTIE' | 'APPROVISIONNEMENT') => {
     event.preventDefault();
     if (!selectedFund || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || !reason.trim()) return;
-    await send('/api/caisse', 'POST', {
+    const saved = await send('/api/caisse', 'POST', {
       chantier_id: selectedFund.chantier.id,
       type,
       montant: Number(amount),
       motif: reason.trim(),
       reference: reference.trim() || undefined,
     }, type === 'SORTIE' ? 'Sortie enregistrée. Le siège a été notifié.' : 'Approvisionnement enregistré.');
+    if (!saved) return;
     setAmount('');
     setReason('');
     setReference('');
@@ -162,11 +163,12 @@ export const CaisseView: React.FC = () => {
   const submitRequest = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selectedFund || !Number.isFinite(Number(requestAmount)) || Number(requestAmount) <= 0 || !requestReason.trim()) return;
-    await send('/api/caisse/demandes', 'POST', {
+    const saved = await send('/api/caisse/demandes', 'POST', {
       chantier_id: selectedFund.chantier.id,
       montant: Number(requestAmount),
       motif: requestReason.trim(),
     }, 'Demande envoyée au siège.');
+    if (!saved) return;
     setRequestAmount('');
     setRequestReason('');
   };
@@ -179,7 +181,7 @@ export const CaisseView: React.FC = () => {
     }, decision === 'APPROUVEE' ? 'Demande approuvée et caisse approvisionnée.' : 'Demande refusée.');
   };
 
-  async function send(url: string, method: 'POST' | 'PUT' | 'PATCH', body: unknown, message: string) {
+  async function send(url: string, method: 'POST' | 'PUT' | 'PATCH', body: unknown, message: string): Promise<boolean> {
     setSaving(true);
     setError('');
     setSuccess('');
@@ -193,8 +195,10 @@ export const CaisseView: React.FC = () => {
       if (!response.ok) throw new Error(result.error || 'Opération refusée.');
       setSuccess(message);
       await loadFunds();
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue.');
+      return false;
     } finally {
       setSaving(false);
     }
