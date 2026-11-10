@@ -248,9 +248,11 @@ export class AuthService {
     }
 
     // RÈGLE 2 & 11 : Aucun accès par défaut sans autorisation explicite dans la matrice RBAC
-    const permId = `perm-${module.toLowerCase()}-${action.toLowerCase()}`;
-    const hasExplicitPermission = this.rolePermissions.some(
-      rp => rp.role_id === user.role_id && rp.permission_id === permId
+    const permission = this.permissions.find(
+      (item) => item.module === module && item.action === action
+    );
+    const hasExplicitPermission = Boolean(permission) && this.rolePermissions.some(
+      (rp) => rp.role_id === user.role_id && rp.permission_id === permission?.id
     );
 
     if (!hasExplicitPermission) {
