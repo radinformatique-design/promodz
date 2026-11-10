@@ -5,6 +5,14 @@
 2. Récupérer l'URL du projet et la clé publishable (ou anon) dans **Project Settings → API**.
 3. Configurer les variables locales à partir de `.env.example`. Ne jamais exposer une clé `service_role`.
 
+## 1 bis. URLs d'authentification
+Dans **Authentication → URL Configuration** de Supabase :
+- définir le Site URL sur l'URL de l'application ;
+- ajouter `http://localhost:3000/auth/callback` et `http://localhost:3000/auth/reset-password` aux Redirect URLs en développement ;
+- ajouter les deux chemins équivalents sur le domaine HTTPS de production.
+
+Renseigner `NEXT_PUBLIC_APP_URL` avec l'URL de l'environnement courant. Les invitations et les liens de récupération utilisent ces URL.
+
 ## 2. Installer et créer les tables
 ```bash
 npm install
