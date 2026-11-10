@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin } from '@/lib/auth/current-app-profile';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,18 +25,24 @@ export async function GET() {
         include: { lotsTravaux: true, comptesBancaires: true },
         orderBy: { created_at: 'desc' },
       }),
-      prisma.employe.findMany({
-        where: { chantier_actuel_id: { in: chantierIds } },
-        include: { chantierActuel: true },
-        orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
-      }),
-      prisma.compteBancaire.findMany({
-        where: {
-          entreprise_id: profile.entreprise_id,
-          OR: [{ chantier_dedie_id: null }, { chantier_dedie_id: { in: chantierIds } }],
-        },
-        orderBy: [{ is_compte_principal: 'desc' }, { nom_banque: 'asc' }],
-      }),
+      (profile.type === 'CHANTIER' || isCompanyAdmin(profile) || profile.role.code === 'RESPONSABLE_RH')
+        ? prisma.employe.findMany({
+            where: { chantier_actuel_id: { in: chantierIds } },
+            include: { chantierActuel: true },
+            orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
+          })
+        : Promise.resolve([]),
+      (isCompanyAdmin(profile) || profile.role.code === 'RESPONSABLE_COMPTABILITE')
+        ? prisma.compteBancaire.findMany({
+            where: { entreprise_id: profile.entreprise_id },
+            orderBy: [{ is_compte_principal: 'desc' }, { nom_banque: 'asc' }],
+          })
+        : profile.type === 'CHANTIER'
+          ? prisma.compteBancaire.findMany({
+              where: { entreprise_id: profile.entreprise_id, chantier_dedie_id: { in: chantierIds } },
+              orderBy: { nom_banque: 'asc' },
+            })
+          : Promise.resolve([]),
     ]);
 
     return NextResponse.json({ entreprise, parametresGeneraux, chantiers, employes, comptesBancaires });
