@@ -262,10 +262,6 @@ export const CaisseView: React.FC = () => {
             <Metric title="Montant consommé" value={money(Number(selectedFund?.plafond || totalCeiling) - Number(selectedFund?.solde || totalBalance))} icon={<ArrowUpRight className="h-5 w-5" />} />
           </div>
 
-          {selectedChantierId === 'ALL' && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Vue consolidée : sélectionnez un chantier précis pour modifier son plafond, enregistrer un mouvement ou demander un réapprovisionnement.</div>
-          )}
-
           <div className="grid gap-5 xl:grid-cols-2">
             {(canExit || canSupply) && selectedFund && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
