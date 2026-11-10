@@ -140,8 +140,8 @@ export const CaisseView: React.FC = () => {
 
   const submitCeiling = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selectedFund || !Number.isFinite(Number(ceiling)) || Number(ceiling) <= 0) return;
-    await send('/api/caisse', 'PUT', { chantier_id: selectedFund.chantier.id, plafond: Number(ceiling) }, 'Plafond enregistré.');
+    if (!cashChantierId || cashChantierId === 'ALL' || !Number.isFinite(Number(ceiling)) || Number(ceiling) <= 0) return;
+    await send('/api/caisse', 'PUT', { chantier_id: cashChantierId, plafond: Number(ceiling) }, 'Plafond enregistré.');
     setCeiling('');
   };
 
@@ -237,7 +237,7 @@ export const CaisseView: React.FC = () => {
         <span className="ml-auto text-xs text-slate-500">{visibleFunds.length} caisse(s) configurée(s)</span>
       </div>
 
-      {canManageCeiling && selectedFund && (
+      {canManageCeiling && cashChantierId !== 'ALL' && (
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="font-bold text-slate-900">Plafond de la caisse</h2>
           <p className="mt-1 text-xs text-slate-500">Le siège définit le plafond initial ou le modifie. Le nouveau plafond ne peut pas être inférieur au solde actuel.</p>
