@@ -51,6 +51,7 @@ CREATE POLICY caisse_select_scope ON public.comptabilite_caisses_chantier
       WHERE c.id = comptabilite_caisses_chantier.chantier_id
         AND c.entreprise_id = public.current_company_id()
         AND public.can_access_chantier(c.id)
+        AND (public.is_company_accountant() OR public.has_app_permission('CAISSE', 'CONSULTER'))
     )
   );
 
