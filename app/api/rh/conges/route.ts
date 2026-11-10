@@ -15,6 +15,7 @@ function canManage(profile: { type: string; role: { code: string } }) {
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
+  if (current.profile.type === 'CENTRAL' && !canManage(current.profile)) return NextResponse.json({ error: 'Accès aux congés réservé au service RH.' }, { status: 403 });
   const ids = await scopeIds(current.profile);
   const rows = await prisma.congeAbsence.findMany({
     where: { employe: { chantier_actuel_id: { in: ids } } },
