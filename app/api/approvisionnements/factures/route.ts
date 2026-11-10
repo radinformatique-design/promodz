@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile)) return NextResponse.json({ error: 'Droits administrateur requis.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_COMPTABILITE'])) return NextResponse.json({ error: 'Gestion des factures réservée au service comptabilité.' }, { status: 403 });
   const body = await request.json();
   if (!body?.id || !['NON_PAYEE', 'PARTIELLE', 'PAYEE'].includes(body.statut_paiement)) {
     return NextResponse.json({ error: 'Identifiant ou statut de règlement invalide.' }, { status: 400 });
