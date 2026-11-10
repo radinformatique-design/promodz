@@ -471,6 +471,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return currentLanguage === 'ar' || parametresGeneraux.is_rtl;
   }, [currentLanguage, parametresGeneraux.is_rtl]);
 
+  const loadApplicationData = async () => {
+    try {
+      const response = await fetch('/api/app/bootstrap', { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.entreprise) setEntreprise(data.entreprise);
+      if (data.parametresGeneraux) setParametresGeneraux(data.parametresGeneraux);
+      setAllChantiers(data.chantiers || []);
+      setEmployes(data.employes || []);
+    } catch (error) {
+      console.error('[BatiProm] Chargement des données Supabase impossible :', error);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const restoreSession = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!active || !data.user) return;
+        setCurrentUser(data.user);
+        setUtilisateurs((previous) => previous.some((item) => item.id === data.user.id)
+          ? previous.map((item) => item.id === data.user.id ? data.user : item)
+          : [...previous, data.user]);
+        setRoles(data.roles || []);
+        setPermissions(data.permissions || []);
+        setRolePermissions(data.rolePermissions || []);
+        await loadApplicationData();
+      } catch (error) {
+        console.error('[BatiProm] Restauration de session Supabase impossible :', error);
+      }
+    };
+    void restoreSession();
+    return () => { active = false; };
+  }, []);
+
   useEffect(() => {
     if (isRtl) {
       document.documentElement.dir = 'rtl';
@@ -640,6 +678,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const res = await authService.login(email, password, deviceInfo);
     if (res.success && res.user) {
       setCurrentUser(res.user);
+      await loadApplicationData();
       if (res.user.type === 'CHANTIER') {
         setSelectedChantierId(res.user.chantiers_assignes[0] || 'ALL');
         if (res.user.role_id === 'role-ct') {
