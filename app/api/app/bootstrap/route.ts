@@ -46,12 +46,7 @@ export async function GET() {
             where: { entreprise_id: profile.entreprise_id },
             orderBy: [{ is_compte_principal: 'desc' }, { nom_banque: 'asc' }],
           })
-        : profile.type === 'CHANTIER'
-          ? prisma.compteBancaire.findMany({
-              where: { entreprise_id: profile.entreprise_id, chantier_dedie_id: { in: chantierIds } },
-              orderBy: { nom_banque: 'asc' },
-            })
-          : Promise.resolve([]),
+        : Promise.resolve([]),
     ]);
 
     return NextResponse.json({ entreprise, parametresGeneraux, chantiers, employes, comptesBancaires });
