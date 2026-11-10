@@ -105,7 +105,7 @@ Puis exécutez les scripts SQL dans `supabase/migrations/` dans l'ordre indiqué
 Créez le compte dans **Supabase → Authentication → Users**, puis créez le profil dans les tables `entreprises`, `roles`, `utilisateurs` et renseignez `auth_user_id` avec l'UUID Auth. Pour ajouter d'autres profils depuis l'API d'administration, le compte Auth correspondant doit déjà exister ; l'API crée ensuite le profil métier et ses affectations.
 
 ### Limites de cette première tranche
-Le schéma comprend 31 modèles, mais toutes les tables métier ne disposent pas encore de politiques RLS ni de Route Handlers CRUD sécurisés. Prisma utilise une connexion PostgreSQL indépendante de la session Supabase : les politiques RLS ne remplacent donc pas les contrôles d'accès explicites dans chaque API Prisma. Ne déployez pas en production avant d'avoir terminé ces contrôles et exécuté les tests multi-entreprises / multi-chantiers.
+Le schéma comprend 34 modèles, mais toutes les tables métier ne disposent pas encore de politiques RLS ni de Route Handlers CRUD sécurisés. Prisma utilise une connexion PostgreSQL indépendante de la session Supabase : les politiques RLS ne remplacent donc pas les contrôles d'accès explicites dans chaque API Prisma. Ne déployez pas en production avant d'avoir terminé ces contrôles et exécuté les tests multi-entreprises / multi-chantiers.
 
 
 ### Extension des modules connectés à PostgreSQL
@@ -118,6 +118,6 @@ La branche de préparation ajoute aussi les API sécurisées suivantes :
 - Notifications et journal d'audit persisté.
 - Bootstrap de la première entreprise et du premier administrateur, puis catalogue système des rôles et permissions.
 
-Pour les étapes d'installation et les scripts SQL, suivre exclusivement [SUPABASE_SETUP.md](./SUPABASE_SETUP.md). Le schéma reste à synchroniser avec `npx prisma db push`, puis les migrations RLS `001` à `005` sont à exécuter dans l'ordre. Le workflow GitHub Actions vérifie la génération Prisma et la compilation Next.js ; aucune connexion à une base de production n'est requise pendant ce contrôle.
+Pour les étapes d'installation et les scripts SQL, suivre exclusivement [SUPABASE_SETUP.md](./SUPABASE_SETUP.md). Le schéma reste à synchroniser avec `npx prisma db push`, puis les migrations RLS `001` à `006` sont à exécuter dans l'ordre. Le workflow GitHub Actions vérifie la génération Prisma et la compilation Next.js ; aucune connexion à une base de production n'est requise pendant ce contrôle.
 
 Les modèles système RBAC sont globaux et en lecture seule à ce stade. La personnalisation des rôles par entreprise, les API CRUD des modules encore non connectés et les tests d'intégration multi-entreprises restent à réaliser avant la mise en production.
