@@ -21,7 +21,8 @@ Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts d
 - `002` : accès central aux chantiers de l'entreprise.
 - `003` : rattachement des fournisseurs à l'entreprise.
 - `004` : politiques métier pour achats, RH, matériel, comptabilité, commercial, juridique, notifications, documents et audit.
-- `005` : clés entreprise explicites pour les données qui peuvent ne pas être rattachées à un chantier.\n- `006` : politiques RLS des caisses chantier, mouvements, demandes de réapprovisionnement et droits dédiés.
+- `005` : clés entreprise explicites pour les données qui peuvent ne pas être rattachées à un chantier.
+- `006` : RLS des caisses de fonds de roulement, mouvements et demandes de réapprovisionnement.\n- `006` : politiques RLS des caisses chantier, mouvements, demandes de réapprovisionnement et droits dédiés.
 
 Les migrations `003` et `005` s'arrêtent volontairement si elles trouvent des lignes sans entreprise. La base cible étant neuve, ce contrôle doit réussir après `prisma db push`. Sur une base déjà alimentée, il faut d'abord attribuer les bons `entreprise_id` aux lignes concernées.
 
@@ -86,3 +87,11 @@ Le modèle ajoute une caisse par chantier avec un plafond défini par le siège.
 - `GET/POST/PATCH /api/caisse/demandes` : consultation, demande et décision du siège.
 
 Après mise à jour de la branche, exécuter à nouveau `npx prisma db push`, puis appliquer la migration `202611100006_cash_fund_rls.sql`. Si `bootstrap-system-rbac.sql` a déjà été exécuté, le relancer : les nouvelles permissions CAISSE sont insérées sans supprimer les permissions existantes.
+
+
+### Caisse de fonds de roulement
+- Le siège / comptabilité crée la caisse d'un chantier et fixe son plafond.
+- Le conducteur de travaux peut enregistrer une sortie si son rôle possède `CAISSE / SORTIR`.
+- Le conducteur peut envoyer une demande de réapprovisionnement (`CAISSE / DEMANDER`).
+- Le responsable comptabilité peut approuver/refuser (`TRAITER_DEMANDE`) et approvisionner (`APPROVISIONNER`).
+- Chaque sortie et demande génère une notification vers les responsables centraux concernés. Le solde est recalculé à partir des mouvements ; les transactions de sortie verrouillent la ligne de caisse pour éviter les dépassements concurrents.
