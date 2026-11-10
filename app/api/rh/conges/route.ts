@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin } from '@/lib/auth/current-app-profile';
 
-export const dynamic = 'force-dynamic';
-
 async function scopeIds(profile: { entreprise_id: string; type: string; affectations: Array<{ chantier_id: string }> }) {
   if (profile.type === 'CHANTIER') return assignedChantierIds(profile as any);
   return (await prisma.chantier.findMany({ where: { entreprise_id: profile.entreprise_id }, select: { id: true } })).map(x => x.id);
