@@ -83,7 +83,7 @@ export async function PATCH(request: Request) {
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
-      await tx.utilisateur.update({ where: { id }, data: allowed });
+      await tx.utilisateur.update({ where: { id }, data: allowed as any });
       if (allowed.type === 'CENTRAL' && chantiers_assignes === undefined) {
         await tx.utilisateurChantier.deleteMany({ where: { utilisateur_id: id } });
       }
