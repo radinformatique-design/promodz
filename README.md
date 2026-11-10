@@ -73,3 +73,36 @@ L'application sera accessible sur [http://localhost:3000](http://localhost:3000)
 npm run build
 npm run start
 ```
+
+
+---
+
+## Supabase Auth & données réelles
+
+La branche `feature/supabase-auth-foundation` prépare la connexion à Supabase :
+
+- Authentification e-mail / mot de passe avec Supabase Auth et cookies SSR.
+- Liaison du profil métier `utilisateurs.auth_user_id` avec l'UUID Supabase Auth.
+- API de profil `GET /api/auth/me`.
+- API d'administration des profils `/api/admin/users` et de la matrice RBAC `/api/admin/rbac`.
+- Chargement des données de l'entreprise, des chantiers et des employés depuis PostgreSQL.
+- Les API chantiers, employés et parc matériel ne retournent plus les données de démonstration en cas de base vide ou d'erreur.
+- Les données de démonstration ne sont plus initialisées dans le contexte client ; le seed reste facultatif.
+
+### Configuration
+Consultez [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) et copiez `.env.example` vers `.env.local`.
+
+Après avoir ajouté les variables, exécutez :
+```bash
+npm install
+npx prisma generate
+npx prisma db push
+```
+
+Puis exécutez les scripts SQL dans `supabase/migrations/` dans l'ordre indiqué.
+
+### Premier utilisateur
+Créez le compte dans **Supabase → Authentication → Users**, puis créez le profil dans les tables `entreprises`, `roles`, `utilisateurs` et renseignez `auth_user_id` avec l'UUID Auth. Pour ajouter d'autres profils depuis l'API d'administration, le compte Auth correspondant doit déjà exister ; l'API crée ensuite le profil métier et ses affectations.
+
+### Limites de cette première tranche
+Le schéma comprend 31 modèles, mais toutes les tables métier ne disposent pas encore de politiques RLS ni de Route Handlers CRUD sécurisés. Prisma utilise une connexion PostgreSQL indépendante de la session Supabase : les politiques RLS ne remplacent donc pas les contrôles d'accès explicites dans chaque API Prisma. Ne déployez pas en production avant d'avoir terminé ces contrôles et exécuté les tests multi-entreprises / multi-chantiers.
