@@ -33,3 +33,16 @@ Après création des tables, exécuter le SQL de `supabase/migrations/2026111000
 
 ## État de cette étape
 Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_user_id`, le fichier d'environnement exemple et une première base RLS sont ajoutés. Les services UI et tous les Route Handlers doivent encore être migrés vers des opérations serveur authentifiées ; Prisma utilise une connexion PostgreSQL distincte et ne bénéficie pas automatiquement des politiques RLS de la session Supabase.
+
+
+## API métier ajoutées sur cette branche
+- `GET/POST/PATCH/DELETE /api/approvisionnements/fournisseurs` : fournisseurs limités à l'entreprise.
+- `GET/POST/PATCH /api/approvisionnements/demandes` : demandes d'achat et notification des administrateurs centraux.
+- `GET/POST/PATCH /api/approvisionnements/commandes` : bons de commande ; émission réservée à l'administrateur central.
+- `GET/POST /api/approvisionnements/receptions` : réceptions rattachées à un bon de commande et à un chantier accessible.
+- `GET/POST/PATCH /api/approvisionnements/factures` : factures fournisseurs et statut de règlement.
+- `GET/PUT /api/comptabilite/budgets` : budgets par chantier et exercice, modifiables au siège.
+- `GET/PATCH /api/notifications` : notifications du seul utilisateur connecté.
+- `GET/POST /api/audit-logs` : journal d'audit lié à l'utilisateur courant.
+
+Les routes contrôlent l'identité Supabase et filtrent les enregistrements Prisma par entreprise et/ou chantier. Elles doivent encore faire l'objet de tests d'intégration sur une base de test avant mise en production. Le suivi des paiements de factures reste un statut simple ; aucun échéancier ni historique détaillé de règlements n'est encore modélisé.
