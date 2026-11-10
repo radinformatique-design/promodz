@@ -86,9 +86,6 @@ const ACTION_CONFIG: Record<PermissionAction, { label: string; badge: string; de
 export const AdministrationView: React.FC = () => {
   const {
     utilisateurs,
-    addUtilisateur,
-    updateUtilisateur,
-    deleteUtilisateur,
     resetUserPassword,
     roles,
     permissions,
@@ -206,6 +203,7 @@ export const AdministrationView: React.FC = () => {
   };
 
   // User form state (Create / Edit)
+  const [userActionError, setUserActionError] = useState<string | null>(null);
   const [userFormData, setUserFormData] = useState({
     nom: '',
     prenom: '',
@@ -215,7 +213,7 @@ export const AdministrationView: React.FC = () => {
     type: 'CHANTIER' as UserType,
     role_id: 'role-ct',
     chantiers_assignes: [] as string[],
-    initialPassword: 'password123'
+    auth_user_id: ''
   });
 
   const handleOpenCreateUser = () => {
@@ -229,7 +227,7 @@ export const AdministrationView: React.FC = () => {
       type: 'CHANTIER',
       role_id: 'role-ct',
       chantiers_assignes: [allChantiers[0]?.id || 'cht-001'],
-      initialPassword: 'password123'
+      auth_user_id: ''
     });
     setIsUserModalOpen(true);
   };
@@ -245,44 +243,64 @@ export const AdministrationView: React.FC = () => {
       type: user.type,
       role_id: user.role_id,
       chantiers_assignes: user.chantiers_assignes || [],
-      initialPassword: ''
+      auth_user_id: ''
     });
     setIsUserModalOpen(true);
   };
 
-  const handleUserFormSubmit = (e: React.FormEvent) => {
+  const handleUserFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUserActionError(null);
     if (!userFormData.nom || !userFormData.email) return;
-
-    if (editingUser) {
-      updateUtilisateur(editingUser.id, {
-        nom: userFormData.nom,
-        prenom: userFormData.prenom,
-        email: userFormData.email,
-        telephone: userFormData.telephone,
-        poste: userFormData.poste,
-        type: userFormData.type,
-        role_id: userFormData.role_id,
-        chantiers_assignes: userFormData.chantiers_assignes
-      });
-    } else {
-      addUtilisateur({
-        ...userFormData
-      });
+    if (!editingUser && !userFormData.auth_user_id.trim()) {
+      setUserActionError('Créez d’abord le compte dans Supabase Auth, puis renseignez son UUID ici.');
+      return;
     }
 
-    setIsUserModalOpen(false);
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: editingUser ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingUser
+          ? { id: editingUser.id, ...userFormData }
+          : { ...userFormData, auth_user_id: userFormData.auth_user_id.trim() }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Enregistrement du profil impossible.');
+      setIsUserModalOpen(false);
+      window.location.reload();
+    } catch (error) {
+      setUserActionError(error instanceof Error ? error.message : 'Erreur lors de l’enregistrement.');
+    }
   };
 
-  const handleToggleUserStatus = (user: Utilisateur) => {
+  const handleToggleUserStatus = async (user: Utilisateur) => {
     const newStatus = user.statut === 'ACTIF' ? 'DESACTIVE' : 'ACTIF';
-    updateUtilisateur(user.id, { statut: newStatus });
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, statut: newStatus }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Modification du statut impossible.');
+      window.location.reload();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Erreur de modification.');
+    }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteConfirmUser) return;
-    deleteUtilisateur(deleteConfirmUser.id);
-    setDeleteConfirmUser(null);
+    try {
+      const response = await fetch(`/api/admin/users?id=${encodeURIComponent(deleteConfirmUser.id)}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Suppression impossible.');
+      setDeleteConfirmUser(null);
+      window.location.reload();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Erreur de suppression.');
+    }
   };
 
   const handleTriggerResetPassword = (user: Utilisateur) => {
@@ -1691,6 +1709,23 @@ export const AdministrationView: React.FC = () => {
                 </div>
               </div>
 
+              {!editingUser && (
+                <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
+                  <label className="block font-medium text-slate-800 mb-1">UUID du compte Supabase Auth *</label>
+                  <input
+                    type="text"
+                    required
+                    value={userFormData.auth_user_id}
+                    onChange={(e) => setUserFormData({ ...userFormData, auth_user_id: e.target.value })}
+                    placeholder="UUID copié depuis Authentication → Users"
+                    className="w-full px-3 py-2 border border-amber-200 rounded-lg text-xs bg-white font-mono"
+                  />
+                  <p className="text-[11px] text-amber-800 mt-2">Le compte doit être créé au préalable dans Supabase Auth avec la même adresse e-mail.</p>
+                </div>
+              )}
+              {userActionError && (
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs">{userActionError}</div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">Périmètre d'activité *</label>
