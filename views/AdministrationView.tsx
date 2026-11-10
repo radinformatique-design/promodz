@@ -1749,7 +1749,7 @@ export const AdministrationView: React.FC = () => {
                     onChange={(e) => {
                       const type = e.target.value as UserType;
                       const compatibleRole = roles.find(r => r.type_acces === type || r.type_acces === 'HYBRIDE');
-                      setUserFormData({ ...userFormData, type, role_id: compatibleRole?.id || '' });
+                      setUserFormData({ ...userFormData, type, role_id: compatibleRole?.id || '', chantiers_assignes: type === 'CENTRAL' ? [] : userFormData.chantiers_assignes });
                     }}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white"
                   >
