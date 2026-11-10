@@ -42,6 +42,7 @@ model Entreprise {
   utilisateurs        Utilisateur[]
   comptesBancaires    CompteBancaire[]
   parametres          ParametresGeneraux[]
+  fournisseurs        Fournisseur[]
 
   @@map("entreprises")
 }
@@ -398,6 +399,7 @@ model CongeAbsence {
 
 model Fournisseur {
   id                  String   @id @default(uuid())
+  entreprise_id       String   @map("entreprise_id")
   raison_sociale      String   @map("raison_sociale")
   code_fournisseur    String   @unique @map("code_fournisseur")
   categorie           String   // MATERIAUX, SOUS_TRAITANCE, LOCATION_ENGINS
@@ -413,6 +415,7 @@ model Fournisseur {
   actif               Boolean  @default(true)
   created_at          DateTime @default(now()) @map("created_at")
 
+  entreprise          Entreprise @relation(fields: [entreprise_id], references: [id], onDelete: Cascade)
   bonsCommande        BonCommande[]
   factures            FactureFournisseur[]
 
