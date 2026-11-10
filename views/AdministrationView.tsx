@@ -86,7 +86,6 @@ const ACTION_CONFIG: Record<PermissionAction, { label: string; badge: string; de
 export const AdministrationView: React.FC = () => {
   const {
     utilisateurs,
-    resetUserPassword,
     roles,
     permissions,
     rolePermissions,
@@ -318,13 +317,19 @@ export const AdministrationView: React.FC = () => {
     setIsResetPasswordModalOpen(true);
   };
 
-  const handleExecuteResetPassword = () => {
+  const handleExecuteResetPassword = async () => {
     if (!targetResetUser) return;
-    const res = resetUserPassword(targetResetUser.email);
-    if (res.success) {
-      setResetFeedback(`Nouveau mot de passe temporaire généré : ${res.tempPassword}`);
-    } else {
-      setResetFeedback(`Erreur : ${res.message}`);
+    setResetFeedback('Envoi du lien de réinitialisation…');
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(targetResetUser.email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      if (error) throw error;
+      setResetFeedback(`Un lien sécurisé a été envoyé à ${targetResetUser.email}.`);
+    } catch (error) {
+      setResetFeedback(`Erreur : ${error instanceof Error ? error.message : 'Envoi du lien impossible.'}`);
     }
   };
 
