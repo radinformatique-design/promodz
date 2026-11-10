@@ -43,8 +43,8 @@ const money = (value: number | string) =>
 
 export const CaisseView: React.FC = () => {
   const {
-    currentUser, allChantiers, selectedChantierId, setSelectedChantierId,
-    verifyAccess, roles
+    currentUser, allChantiers, selectedChantierId,
+    roles, permissions, rolePermissions
   } = useApp();
 
   const [funds, setFunds] = useState<CashFund[]>([]);
@@ -62,14 +62,38 @@ export const CaisseView: React.FC = () => {
   const [decisionComment, setDecisionComment] = useState<Record<string, string>>({});
 
   const roleCode = roles.find((role) => role.id === currentUser?.role_id)?.code || '';
-  const canView = verifyAccess('CAISSE', 'CONSULTER').allowed;
-  const canExit = verifyAccess('CAISSE', 'SORTIR').allowed;
-  const canAsk = verifyAccess('CAISSE', 'DEMANDER').allowed;
-  const canSupply = verifyAccess('CAISSE', 'APPROVISIONNER').allowed;
-  const canManageCeiling = verifyAccess('CAISSE', 'GERER_PLAFOND').allowed;
-  const canDecide = verifyAccess('CAISSE', 'TRAITER_DEMANDE').allowed;
-  const isCentral = currentUser?.type === 'CENTRAL';
-  const isAdmin = roleCode === 'ADMINISTRATEUR';
+  const hasPermission = (action: string) => {
+    if (roleCode === 'ADMINISTRATEUR') return true;
+    return Boolean(currentUser && rolePermissions.some((rp) =>
+      rp.role_id === currentUser.role_id &&
+      permissions.some((permission) =>
+        permission.id === rp.permission_id &&
+        permission.module === 'CAISSE' &&
+        permission.action === action
+      )
+    ));
+  };
+  const canView = roleCode === 'RESPONSABLE_COMPTABILITE' || hasPermission('CONSULTER');
+  const canExit = hasPermission('SORTIR');
+  const canAsk = hasPermission('DEMANDER');
+  const canSupply = hasPermission('APPROVISIONNER');
+  const canManageCeiling = roleCode === 'RESPONSABLE_COMPTABILITE' || hasPermission('GERER_PLAFOND');
+  const canDecide = roleCode === 'RESPONSABLE_COMPTABILITE' || hasPermission('TRAITER_DEMANDE');
+  const [cashChantierId, setCashChantierId] = useState('');
+  const availableChantiers = useMemo(() => {
+    if (!currentUser) return [];
+    return currentUser.type === 'CHANTIER'
+      ? allChantiers.filter((chantier) => currentUser.chantiers_assignes.includes(chantier.id))
+      : allChantiers;
+  }, [currentUser, allChantiers]);
+
+  useEffect(() => {
+    if (cashChantierId && availableChantiers.some((chantier) => chantier.id === cashChantierId)) return;
+    const initial = selectedChantierId !== 'ALL' && availableChantiers.some((chantier) => chantier.id === selectedChantierId)
+      ? selectedChantierId
+      : availableChantiers[0]?.id || '';
+    setCashChantierId(initial);
+  }, [cashChantierId, selectedChantierId, availableChantiers]);
 
   const loadFunds = async () => {
     setLoading(true);
@@ -91,9 +115,9 @@ export const CaisseView: React.FC = () => {
   }, []);
 
   const visibleFunds = useMemo(() => {
-    if (selectedChantierId === 'ALL') return funds;
-    return funds.filter((fund) => fund.chantier.id === selectedChantierId);
-  }, [funds, selectedChantierId]);
+    if (!cashChantierId) return [];
+    return funds.filter((fund) => fund.chantier.id === cashChantierId);
+  }, [funds, cashChantierId]);
 
   const selectedFund = selectedChantierId === 'ALL' ? null : (visibleFunds[0] || null);
   const totalCeiling = visibleFunds.reduce((sum, fund) => sum + Number(fund.plafond || 0), 0);
@@ -200,12 +224,25 @@ export const CaisseView: React.FC = () => {
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
         <Building2 className="h-4 w-4 text-slate-500" />
         <label className="text-xs font-semibold text-slate-600">Chantier affiché</label>
-        <select value={selectedChantierId} onChange={(e) => setSelectedChantierId(e.target.value as string | 'ALL')} className="min-w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-          {isCentral && <option value="ALL">Tous les chantiers</option>}
-          {allChantiers.map((chantier) => <option key={chantier.id} value={chantier.id}>{chantier.code_chantier} — {chantier.nom_projet}</option>)}
+        <select value={cashChantierId} onChange={(e) => setCashChantierId(e.target.value)} className="min-w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+          {availableChantiers.map((chantier) => <option key={chantier.id} value={chantier.id}>{chantier.code_chantier} — {chantier.nom_projet}</option>)}
         </select>
         <span className="ml-auto text-xs text-slate-500">{visibleFunds.length} caisse(s) configurée(s)</span>
       </div>
+
+      {canManageCeiling && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="font-bold text-slate-900">Plafond de la caisse</h2>
+          <p className="mt-1 text-xs text-slate-500">Le siège définit le plafond initial ou le modifie. Le nouveau plafond ne peut pas être inférieur au solde actuel.</p>
+          <form onSubmit={submitCeiling} className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <select value={cashChantierId} onChange={(e) => setCashChantierId(e.target.value)} required className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+              {availableChantiers.map((chantier) => <option key={chantier.id} value={chantier.id}>{chantier.code_chantier} — {chantier.nom_projet}</option>)}
+            </select>
+            <input type="number" min="0.01" step="0.01" required value={ceiling} onChange={(e) => setCeiling(e.target.value)} placeholder="Nouveau plafond (DZD)" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+            <button disabled={saving || !cashChantierId} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Enregistrer le plafond</button>
+          </form>
+        </section>
+      )}
 
       {loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500">Chargement des caisses…</div>
@@ -228,17 +265,6 @@ export const CaisseView: React.FC = () => {
           )}
 
           <div className="grid gap-5 xl:grid-cols-2">
-            {canManageCeiling && selectedFund && (
-              <section className="rounded-2xl border border-slate-200 bg-white p-5">
-                <h2 className="font-bold text-slate-900">Plafond de la caisse</h2>
-                <p className="mt-1 text-xs text-slate-500">Le plafond est défini par le siège central. Il ne peut pas être inférieur au solde actuel.</p>
-                <form onSubmit={submitCeiling} className="mt-4 flex flex-col gap-3 sm:flex-row">
-                  <input type="number" min="0.01" step="0.01" required value={ceiling} onChange={(e) => setCeiling(e.target.value)} placeholder="Nouveau plafond (DZD)" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-                  <button disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Enregistrer</button>
-                </form>
-              </section>
-            )}
-
             {(canExit || canSupply) && selectedFund && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
                 <h2 className="font-bold text-slate-900">Enregistrer un mouvement</h2>
