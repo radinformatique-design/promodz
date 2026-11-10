@@ -13,12 +13,6 @@ Dans **Authentication → URL Configuration** de Supabase :
 
 Renseigner `NEXT_PUBLIC_APP_URL` avec l'URL de l'environnement courant. Les invitations et les liens de récupération utilisent ces URL.
 
-## 2. Configurer les URLs Auth
-Dans **Supabase → Authentication → URL Configuration** :
-- définir la Site URL sur l'URL réelle de BatiProm ;
-- ajouter les Redirect URLs pour `http://localhost:3000/auth/callback`, `http://localhost:3000/auth/reset-password` et les mêmes chemins sur le domaine de production ;
-- utiliser HTTPS en production.
-
 ## 2. Installer et créer les tables
 ```bash
 npm install
@@ -29,14 +23,14 @@ npx prisma db push
 Le schéma Prisma reste la source de vérité pour les 34 modèles métier actuels. Pour les environnements durables, convertir ensuite les changements de schéma en migrations versionnées avec `npx prisma migrate dev --name init` puis déployer avec `npx prisma migrate deploy`.
 
 ## 3. Activer les politiques RLS
-Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique, y compris `006` pour la caisse chantier.
+Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique : `001`, `002`, `003`, `004`, `005`, puis `006`.
 
 - `001` : Auth, profils, entreprise et affectations.
 - `002` : accès central aux chantiers de l'entreprise.
 - `003` : rattachement des fournisseurs à l'entreprise.
 - `004` : politiques métier pour achats, RH, matériel, comptabilité, commercial, juridique, notifications, documents et audit.
 - `005` : clés entreprise explicites pour les données qui peuvent ne pas être rattachées à un chantier.
-- `006` : RLS des caisses de fonds de roulement, mouvements et demandes de réapprovisionnement.\n- `006` : politiques RLS des caisses chantier, mouvements, demandes de réapprovisionnement et droits dédiés.
+- `006` : politiques RLS des caisses chantier, mouvements, demandes de réapprovisionnement et droits dédiés.
 
 Les migrations `003` et `005` s'arrêtent volontairement si elles trouvent des lignes sans entreprise. La base cible étant neuve, ce contrôle doit réussir après `prisma db push`. Sur une base déjà alimentée, il faut d'abord attribuer les bons `entreprise_id` aux lignes concernées.
 
@@ -56,7 +50,7 @@ Les politiques couvrent les tables métier présentes dans les migrations, y com
 - Les mots de passe de connexion sont stockés uniquement dans les variables d'environnement locales / du fournisseur d'hébergement.
 
 ## État de cette étape
-Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_user_id`, le flux de récupération de mot de passe, les scripts de bootstrap et les politiques RLS des 31 tables sont ajoutés. Plusieurs API métier sont connectées à Prisma avec contrôles de rôle et de périmètre ; les autres écrans et opérations doivent encore être migrés et testés. Prisma utilise une connexion PostgreSQL distincte et ne bénéficie pas automatiquement des politiques RLS de la session Supabase.
+Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_user_id`, le flux de récupération de mot de passe, les scripts de bootstrap et les politiques RLS des 34 modèles sont ajoutés. Plusieurs API métier sont connectées à Prisma avec contrôles de rôle et de périmètre ; les autres écrans et opérations doivent encore être migrés et testés. Prisma utilise une connexion PostgreSQL distincte et ne bénéficie pas automatiquement des politiques RLS de la session Supabase.
 
 
 ## API métier ajoutées sur cette branche
@@ -70,6 +64,9 @@ Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_use
 - `GET/POST /api/rh/pointages` et `GET/POST/PATCH /api/rh/conges` : saisie chantier et validation RH selon le rôle.
 - `GET/PATCH /api/notifications` : notifications du seul utilisateur connecté.
 - `GET/POST /api/audit-logs` : journal d'audit lié à l'utilisateur courant.
+- `GET/POST/PUT /api/caisse` et `GET/POST/PATCH /api/caisse/demandes` : fonds de roulement, plafonds, sorties, réapprovisionnements et validations.
+- `GET/POST/PATCH/DELETE /api/materiel/parc`, `GET/POST /api/materiel/entretiens`, `GET/POST/PATCH /api/materiel/pieces` : parc, entretiens et pièces remplaçables.
+- `POST /api/admin/users/invite` : création du compte Auth et envoi d'une invitation par e-mail.
 
 Les routes contrôlent l'identité Supabase et filtrent les enregistrements Prisma par entreprise et/ou chantier. Elles doivent encore faire l'objet de tests d'intégration sur une base de test avant mise en production. Le suivi des paiements de factures reste un statut simple ; aucun échéancier ni historique détaillé de règlements n'est encore modélisé.
 
