@@ -1723,17 +1723,9 @@ export const AdministrationView: React.FC = () => {
               </div>
 
               {!editingUser && (
-                <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
-                  <label className="block font-medium text-slate-800 mb-1">UUID du compte Supabase Auth *</label>
-                  <input
-                    type="text"
-                    required
-                    value={userFormData.auth_user_id}
-                    onChange={(e) => setUserFormData({ ...userFormData, auth_user_id: e.target.value })}
-                    placeholder="UUID copié depuis Authentication → Users"
-                    className="w-full px-3 py-2 border border-amber-200 rounded-lg text-xs bg-white font-mono"
-                  />
-                  <p className="text-[11px] text-amber-800 mt-2">Le compte doit être créé au préalable dans Supabase Auth avec la même adresse e-mail.</p>
+                <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50">
+                  <p className="font-semibold text-emerald-900">Invitation sécurisée par e-mail</p>
+                  <p className="text-[11px] text-emerald-800 mt-1">BatiProm crée le compte Supabase Auth et envoie un lien d’invitation à cette adresse. L’utilisateur définira lui-même son mot de passe à l’ouverture du lien.</p>
                 </div>
               )}
               {userActionError && (
