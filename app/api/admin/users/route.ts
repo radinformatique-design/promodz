@@ -33,6 +33,8 @@ export async function POST(request: Request) {
 
   const role = await prisma.role.findUnique({ where: { id: role_id } });
   if (!role) return NextResponse.json({ error: 'Rôle introuvable.' }, { status: 400 });
+  if (type === 'CENTRAL' && role.type_acces === 'CHANTIER') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs chantier.' }, { status: 400 });
+  if (type === 'CHANTIER' && role.type_acces === 'CENTRAL') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs centraux.' }, { status: 400 });
 
   const chantierIds = Array.isArray(chantiers_assignes) ? [...new Set(chantiers_assignes)] : [];
   if (type === 'CHANTIER' && chantierIds.length === 0) {
@@ -101,9 +103,14 @@ export async function PATCH(request: Request) {
     if (Object.prototype.hasOwnProperty.call(updates, key)) allowed[key] = updates[key];
   }
 
+  if (Object.prototype.hasOwnProperty.call(updates, 'email')) return NextResponse.json({ error: 'Modifiez l’adresse e-mail dans Supabase Auth puis synchronisez le profil.' }, { status: 400 });
+
   if (allowed.role_id) {
     const role = await prisma.role.findUnique({ where: { id: String(allowed.role_id) } });
     if (!role) return NextResponse.json({ error: 'Rôle inconnu.' }, { status: 400 });
+    const effectiveType = String(allowed.type || target.type);
+    if (effectiveType === 'CENTRAL' && role.type_acces === 'CHANTIER') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs chantier.' }, { status: 400 });
+    if (effectiveType === 'CHANTIER' && role.type_acces === 'CENTRAL') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs centraux.' }, { status: 400 });
   }
 
   if (chantiers_assignes !== undefined && !Array.isArray(chantiers_assignes)) {
