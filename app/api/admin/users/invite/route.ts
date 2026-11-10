@@ -3,8 +3,6 @@ import prisma from '@/lib/prisma';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCurrentAppProfile, isCompanyAdmin } from '@/lib/auth/current-app-profile';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
