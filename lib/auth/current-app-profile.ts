@@ -29,3 +29,13 @@ export function isCompanyAdmin(profile: { role: { code: string } }) {
 export function hasAnyRole(profile: { role: { code: string } }, codes: string[]) {
   return codes.includes(profile.role.code);
 }
+
+export function hasPermission(
+  profile: { role: { permissions: Array<{ permission: { module: string; action: string } }> } },
+  module: string,
+  action: string
+) {
+  return profile.role.permissions.some(
+    (item) => item.permission.module === module && item.permission.action === action
+  );
+}
