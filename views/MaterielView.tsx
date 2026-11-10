@@ -942,7 +942,7 @@ export const MaterielView: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
-                          {v.assurance_police || 'POL-FLOTTE-2024'}
+                          {v.assurance_police || 'Non renseignée'}
                         </td>
                         <td className="py-3.5 px-4 font-semibold text-slate-800">
                           {v.date_fin_assurance || 'Non renseignée'}
