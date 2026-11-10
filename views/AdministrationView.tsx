@@ -49,7 +49,8 @@ import {
   Ruler,
   Building2,
   FolderOpen,
-  Sparkles
+  Sparkles,
+  Wallet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserType, AuditAction, ModuleCode, PermissionAction, Utilisateur } from '../types/database';
@@ -70,7 +71,8 @@ const MODULE_ICONS: Record<ModuleCode, any> = {
   ADMINISTRATION: ShieldCheck,
   DOCUMENTS: FolderOpen,
   NOTIFICATIONS: Bell,
-  PARAMETRES: Settings2
+  PARAMETRES: Settings2,
+  CAISSE: Wallet
 };
 
 const ACTION_CONFIG: Record<PermissionAction, { label: string; badge: string; desc: string }> = {
@@ -80,7 +82,12 @@ const ACTION_CONFIG: Record<PermissionAction, { label: string; badge: string; de
   SUPPRIMER: { label: 'Supprimer', badge: 'bg-rose-50 text-rose-700 border-rose-200', desc: 'Archivage ou suppression définitive' },
   VALIDER: { label: 'Valider', badge: 'bg-purple-50 text-purple-700 border-purple-200', desc: 'Approbation formelle et visas hiérarchiques' },
   REFUSER: { label: 'Refuser', badge: 'bg-orange-50 text-orange-700 border-orange-200', desc: 'Rejet motivé ou renvoi pour correction' },
-  EXPORTER: { label: 'Exporter', badge: 'bg-slate-100 text-slate-700 border-slate-300', desc: 'Export PDF / Excel et génération d’états' }
+  EXPORTER: { label: 'Exporter', badge: 'bg-slate-100 text-slate-700 border-slate-300', desc: 'Export PDF / Excel et génération d’états' },
+  SORTIR: { label: 'Sortir', badge: 'bg-rose-50 text-rose-700 border-rose-200', desc: 'Enregistrer une dépense de la caisse chantier' },
+  DEMANDER: { label: 'Demander', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200', desc: 'Demander un réapprovisionnement au siège' },
+  APPROVISIONNER: { label: 'Approvisionner', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', desc: 'Enregistrer un versement dans la caisse chantier' },
+  GERER_PLAFOND: { label: 'Gérer plafond', badge: 'bg-amber-50 text-amber-700 border-amber-200', desc: 'Définir le plafond autorisé de la caisse' },
+  TRAITER_DEMANDE: { label: 'Traiter demande', badge: 'bg-purple-50 text-purple-700 border-purple-200', desc: 'Approuver ou refuser un réapprovisionnement' }
 };
 
 export const AdministrationView: React.FC = () => {
@@ -1109,7 +1116,7 @@ export const AdministrationView: React.FC = () => {
                         </thead>
 
                         <tbody className="divide-y divide-slate-100">
-                          {ACTIONS_LIST.map((action) => {
+                          {(mod.code === 'CAISSE' ? [...ACTIONS_LIST, 'SORTIR', 'DEMANDER', 'APPROVISIONNER', 'GERER_PLAFOND', 'TRAITER_DEMANDE'] as PermissionAction[] : ACTIONS_LIST).map((action) => {
                             const actionConf = ACTION_CONFIG[action];
                             const permId = permissions.find(permission => permission.module === mod.code && permission.action === action)?.id || ''; 
 
