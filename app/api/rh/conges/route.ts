@@ -11,11 +11,14 @@ async function scopeIds(profile: { entreprise_id: string; type: string; affectat
 function canManage(profile: { type: string; role: { code: string } }) {
   return isCompanyAdmin(profile as any) || (profile.type === 'CENTRAL' && profile.role.code === 'RESPONSABLE_RH');
 }
+function canRequest(profile: { type: string; role: { code: string } }) {
+  return canManage(profile) || (profile.type === 'CHANTIER' && profile.role.code === 'CONDUCTEUR_TRAVAUX');
+}
 
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (current.profile.type === 'CENTRAL' && !canManage(current.profile)) return NextResponse.json({ error: 'Accès aux congés réservé au service RH.' }, { status: 403 });
+  if (!canRequest(current.profile)) return NextResponse.json({ error: 'Accès aux congés réservé aux conducteurs et au service RH.' }, { status: 403 });
   const ids = await scopeIds(current.profile);
   const rows = await prisma.congeAbsence.findMany({
     where: { employe: { chantier_actuel_id: { in: ids } } },
@@ -28,6 +31,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
+  if (!canRequest(current.profile)) return NextResponse.json({ error: 'Seuls les conducteurs et le service RH peuvent déclarer une demande de congé.' }, { status: 403 });
   const body = await request.json();
   const ids = await scopeIds(current.profile);
   const employee = await prisma.employe.findFirst({
