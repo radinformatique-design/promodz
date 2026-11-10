@@ -47,10 +47,9 @@ export async function POST(request: Request) {
           lignes_recues: body.lignes_recues,
         },
       });
-      const receptions = await tx.bonReception.count({ where: { bon_commande_id: order.id } });
       await tx.bonCommande.update({
         where: { id: order.id },
-        data: { statut: body.statut_conforme === false ? 'RECU_PARTIEL' : 'RECU_TOTAL' },
+        data: { statut: body.commande_complete === true && body.statut_conforme !== false ? 'RECU_TOTAL' : 'RECU_PARTIEL' },
       });
       return created;
     });
