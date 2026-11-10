@@ -140,7 +140,7 @@ export async function PATCH(request: Request) {
   const decision = String(body?.decision || '');
   const comment = String(body?.commentaire || '').trim();
   if (!id || !['APPROUVEE', 'REFUSEE'].includes(decision)) {
-    return NextResponse.json({ error: 'Identifiant et décision APPPROUVEE/REFUSEE obligatoires.' }, { status: 400 });
+    return NextResponse.json({ error: 'Identifiant et décision APPROUVEE/REFUSEE obligatoires.' }, { status: 400 });
   }
 
   try {
