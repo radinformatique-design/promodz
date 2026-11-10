@@ -63,52 +63,6 @@ import {
   ClientProspect,
   ReservationVenteVEFA
 } from '../types/database';
-import {
-  DEMO_ENTREPRISE,
-  DEMO_CHANTIERS,
-  DEMO_NOTIFICATIONS,
-  DEMO_AUDIT_LOGS,
-  DEMO_DOCUMENTS,
-  DEMO_COMPTES_BANCAIRES,
-  DEMO_PARAMETRES_GENERAUX,
-  DEMO_EMPLOYES,
-  DEMO_AFFECTATIONS_HISTORIQUE,
-  DEMO_CONGES_ABSENCES,
-  DEMO_POINTAGES,
-  DEMO_DEMANDES_DEROGATION,
-  DEMO_FOURNISSEURS,
-  DEMO_DEMANDES_ACHAT,
-  DEMO_COMPARAISONS_OFFRES,
-  DEMO_BONS_COMMANDE,
-  DEMO_BONS_LIVRAISON_RECEPTION,
-  DEMO_FACTURES_FOURNISSEURS,
-  DEMO_ARTICLES_STOCK,
-  DEMO_MOUVEMENTS_STOCK,
-  DEMO_BONS_SORTIE,
-  DEMO_TRANSFERTS_CHANTIERS,
-  DEMO_INVENTAIRES_MAGASIN,
-  DEMO_VEHICULES,
-  DEMO_ENTRETIENS,
-  DEMO_PIECES_REMPLACABLES,
-  DEMO_LOTS_TRAVAUX,
-  DEMO_STRUCTURE_CHANTIER,
-  DEMO_POSTES_TRAVAUX,
-  DEMO_METRES,
-  DEMO_RAPPORTS_CHANTIER,
-  DEMO_CONTROLES_CTC,
-  DEMO_PLANS_BET,
-  DEMO_SITUATIONS_TRAVAUX,
-  DEMO_FACTURES_CLIENTS,
-  DEMO_TRANSACTIONS_FINANCIERES,
-  DEMO_DECLARATIONS_FISCALES,
-  DEMO_CLOTURES_COMPTABLES,
-  DEMO_CONTRATS_JURIDIQUES,
-  DEMO_DOCUMENTS_FONCIERS,
-  DEMO_DOSSIERS_LITIGES,
-  DEMO_BIENS_IMMOBILIERS,
-  DEMO_CLIENTS_PROSPECTS,
-  DEMO_RESERVATIONS_VEFA
-} from '../data/demoData';
 import { authService, VerificationResult } from '../services/authService';
 
 interface AppContextType {
@@ -501,6 +455,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setPermissions(data.permissions || []);
         setRolePermissions(data.rolePermissions || []);
         await loadApplicationData();
+        const [usersResponse, rbacResponse] = await Promise.all([
+          fetch('/api/admin/users', { cache: 'no-store' }),
+          fetch('/api/admin/rbac', { cache: 'no-store' }),
+        ]);
+        if (active && usersResponse.ok) setUtilisateurs(await usersResponse.json());
+        if (active && rbacResponse.ok) {
+          const rbac = await rbacResponse.json();
+          setRoles(rbac.roles || []);
+          setPermissions(rbac.permissions || []);
+          setRolePermissions(rbac.rolePermissions || []);
+        }
       } catch (error) {
         console.error('[BatiProm] Restauration de session Supabase impossible :', error);
       }
