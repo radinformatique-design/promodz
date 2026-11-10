@@ -49,7 +49,8 @@ export type ModuleCode =
   | 'CHANTIERS'
   | 'NOTIFICATIONS'
   | 'PARAMETRES'
-  | 'DOCUMENTS';
+  | 'DOCUMENTS'
+  | 'CAISSE';
 
 export type ChantierStatut = 
   | 'ETUDE_FONCIERE'
