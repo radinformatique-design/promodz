@@ -259,6 +259,7 @@ async function main() {
       update: {},
       create: {
         id: veh.id,
+        entreprise_id: entreprise.id,
         code_parc: code,
         type_engin: veh.categorie || 'VEHICULE_LEGER',
         marque: veh.marque,
