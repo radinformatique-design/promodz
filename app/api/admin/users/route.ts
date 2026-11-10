@@ -38,6 +38,7 @@ export async function POST(request: Request) {
   if (type === 'CHANTIER' && role.type_acces === 'CENTRAL') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs centraux.' }, { status: 400 });
 
   const chantierIds = Array.isArray(chantiers_assignes) ? [...new Set(chantiers_assignes)] : [];
+  if (type === 'CENTRAL' && chantierIds.length > 0) return NextResponse.json({ error: 'Un utilisateur central ne doit pas recevoir d’affectation chantier directe.' }, { status: 400 });
   if (type === 'CHANTIER' && chantierIds.length === 0) {
     return NextResponse.json({ error: 'Un utilisateur de chantier doit être affecté à au moins un chantier.' }, { status: 400 });
   }
@@ -123,6 +124,7 @@ export async function PATCH(request: Request) {
   const effectiveType = String(allowed.type || target.type);
   if (effectiveType === 'CENTRAL' && effectiveRole.type_acces === 'CHANTIER') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs chantier.' }, { status: 400 });
   if (effectiveType === 'CHANTIER' && effectiveRole.type_acces === 'CENTRAL') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs centraux.' }, { status: 400 });
+  if (effectiveType === 'CHANTIER' && target.type !== 'CHANTIER' && chantiers_assignes === undefined) return NextResponse.json({ error: 'Affectez au moins un chantier à ce nouvel utilisateur chantier.' }, { status: 400 });
 
   if (chantiers_assignes !== undefined && !Array.isArray(chantiers_assignes)) {
     return NextResponse.json({ error: 'chantiers_assignes doit être un tableau.' }, { status: 400 });
@@ -131,6 +133,9 @@ export async function PATCH(request: Request) {
   try {
     const updated = await prisma.$transaction(async (tx) => {
       await tx.utilisateur.update({ where: { id }, data: allowed });
+      if (allowed.type === 'CENTRAL' && chantiers_assignes === undefined) {
+        await tx.utilisateurChantier.deleteMany({ where: { utilisateur_id: id } });
+      }
       if (Array.isArray(chantiers_assignes)) {
         const ids = [...new Set(chantiers_assignes)];
         if ((allowed.type || target.type) === 'CHANTIER' && ids.length === 0) {
