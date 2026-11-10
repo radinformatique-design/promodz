@@ -20,7 +20,7 @@ export async function GET() {
   const ids = await scopeIds(current.profile);
   const rows = await prisma.congeAbsence.findMany({
     where: { employe: { chantier_actuel_id: { in: ids } } },
-    include: { employe: { include: { chantierActuel: true } } },
+    include: { employe: { select: { id: true, matricule: true, nom: true, prenom: true, chantier_actuel_id: true, chantierActuel: { select: { id: true, nom_projet: true } } } } },
     orderBy: { created_at: 'desc' },
   });
   return NextResponse.json(rows);
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       motif: body.motif || null,
       statut: 'EN_ATTENTE',
     },
-    include: { employe: true },
+    include: { employe: { select: { id: true, matricule: true, nom: true, prenom: true, chantier_actuel_id: true } } },
   });
   const recipients = await prisma.utilisateur.findMany({
     where: {
