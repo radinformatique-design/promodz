@@ -394,77 +394,77 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [entreprise, setEntreprise] = useState<Entreprise>(DEMO_ENTREPRISE);
-  const [comptesBancaires, setComptesBancaires] = useState<CompteBancaire[]>(DEMO_COMPTES_BANCAIRES);
-  const [parametresGeneraux, setParametresGeneraux] = useState<ParametresGeneraux>(DEMO_PARAMETRES_GENERAUX);
+  const [entreprise, setEntreprise] = useState<Entreprise>({} as Entreprise);
+  const [comptesBancaires, setComptesBancaires] = useState<CompteBancaire[]>([]);
+  const [parametresGeneraux, setParametresGeneraux] = useState<ParametresGeneraux>({} as ParametresGeneraux);
   const [currentLanguage, setCurrentLanguageState] = useState<'fr' | 'ar'>('fr');
-  const [allChantiers, setAllChantiers] = useState<Chantier[]>(DEMO_CHANTIERS);
-  const [currentUser, setCurrentUser] = useState<Utilisateur | null>(authService.getAuthenticatedUser());
-  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>(authService.getAllUsers());
-  const [roles, setRoles] = useState<Role[]>(authService.getAllRoles());
-  const [permissions, setPermissions] = useState<Permission[]>(authService.getAllPermissions());
-  const [rolePermissions, setRolePermissions] = useState<RolePermission[]>(authService.getRolePermissions());
+  const [allChantiers, setAllChantiers] = useState<Chantier[]>([]);
+  const [currentUser, setCurrentUser] = useState<Utilisateur | null>(null);
+  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
   
   const [selectedChantierId, setSelectedChantierId] = useState<string | 'ALL'>('ALL');
-  const [notifications, setNotifications] = useState<Notification[]>(DEMO_NOTIFICATIONS);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(DEMO_AUDIT_LOGS);
-  const [documents, setDocuments] = useState<DocumentGED[]>(DEMO_DOCUMENTS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [documents, setDocuments] = useState<DocumentGED[]>([]);
   const [activeNav, setActiveNavState] = useState<string>('dashboard');
   const [securityViolation, setSecurityViolation] = useState<{ module: string; message: string; ruleCode: string } | null>(null);
 
   // RH & Pointage State
-  const [employes, setEmployes] = useState<Employe[]>(DEMO_EMPLOYES);
-  const [affectationsHistorique, setAffectationsHistorique] = useState<AffectationHistorique[]>(DEMO_AFFECTATIONS_HISTORIQUE);
-  const [congesAbsences, setCongesAbsences] = useState<CongeAbsence[]>(DEMO_CONGES_ABSENCES);
-  const [pointages, setPointages] = useState<PointageLigne[]>(DEMO_POINTAGES);
-  const [demandesDerogation, setDemandesDerogation] = useState<DemandeDerogationPointage[]>(DEMO_DEMANDES_DEROGATION);
+  const [employes, setEmployes] = useState<Employe[]>([]);
+  const [affectationsHistorique, setAffectationsHistorique] = useState<AffectationHistorique[]>([]);
+  const [congesAbsences, setCongesAbsences] = useState<CongeAbsence[]>([]);
+  const [pointages, setPointages] = useState<PointageLigne[]>([]);
+  const [demandesDerogation, setDemandesDerogation] = useState<DemandeDerogationPointage[]>([]);
   const [simulatedPointageTime, setSimulatedPointageTime] = useState<string>('08:00');
 
   // Approvisionnements State (Circuit Direct Chantiers)
-  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>(DEMO_FOURNISSEURS);
-  const [demandesAchat, setDemandesAchat] = useState<DemandeAchat[]>(DEMO_DEMANDES_ACHAT);
-  const [comparaisonsOffres, setComparaisonsOffres] = useState<ComparaisonOffre[]>(DEMO_COMPARAISONS_OFFRES);
-  const [bonsCommande, setBonsCommande] = useState<BonCommande[]>(DEMO_BONS_COMMANDE);
-  const [receptionsChantier, setReceptionsChantier] = useState<BonLivraisonReception[]>(DEMO_BONS_LIVRAISON_RECEPTION);
-  const [facturesFournisseurs, setFacturesFournisseurs] = useState<FactureFournisseur[]>(DEMO_FACTURES_FOURNISSEURS);
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([]);
+  const [demandesAchat, setDemandesAchat] = useState<DemandeAchat[]>([]);
+  const [comparaisonsOffres, setComparaisonsOffres] = useState<ComparaisonOffre[]>([]);
+  const [bonsCommande, setBonsCommande] = useState<BonCommande[]>([]);
+  const [receptionsChantier, setReceptionsChantier] = useState<BonLivraisonReception[]>([]);
+  const [facturesFournisseurs, setFacturesFournisseurs] = useState<FactureFournisseur[]>([]);
 
   // Magasin & Stock State (100% indépendant par chantier)
-  const [articlesStock, setArticlesStock] = useState<ArticleStock[]>(DEMO_ARTICLES_STOCK);
-  const [mouvementsStock, setMouvementsStock] = useState<MouvementStock[]>(DEMO_MOUVEMENTS_STOCK);
-  const [bonsSortie, setBonsSortie] = useState<BonSortie[]>(DEMO_BONS_SORTIE);
-  const [transfertsInterChantier, setTransfertsInterChantier] = useState<TransfertInterChantier[]>(DEMO_TRANSFERTS_CHANTIERS);
-  const [inventairesMagasin, setInventairesMagasin] = useState<InventaireMagasin[]>(DEMO_INVENTAIRES_MAGASIN);
+  const [articlesStock, setArticlesStock] = useState<ArticleStock[]>([]);
+  const [mouvementsStock, setMouvementsStock] = useState<MouvementStock[]>([]);
+  const [bonsSortie, setBonsSortie] = useState<BonSortie[]>([]);
+  const [transfertsInterChantier, setTransfertsInterChantier] = useState<TransfertInterChantier[]>([]);
+  const [inventairesMagasin, setInventairesMagasin] = useState<InventaireMagasin[]>([]);
 
   // Matériel & Parc Automobile
-  const [vehicules, setVehicules] = useState<Vehicule[]>(DEMO_VEHICULES);
-  const [entretiens, setEntretiens] = useState<Entretien[]>(DEMO_ENTRETIENS);
-  const [piecesRemplacables, setPiecesRemplacables] = useState<PieceRemplacable[]>(DEMO_PIECES_REMPLACABLES);
+  const [vehicules, setVehicules] = useState<Vehicule[]>([]);
+  const [entretiens, setEntretiens] = useState<Entretien[]>([]);
+  const [piecesRemplacables, setPiecesRemplacables] = useState<PieceRemplacable[]>([]);
 
   // Comptabilité & Fiscalité State
-  const [facturesClients, setFacturesClients] = useState<FactureClient[]>(DEMO_FACTURES_CLIENTS);
-  const [transactions, setTransactions] = useState<TransactionFinanciere[]>(DEMO_TRANSACTIONS_FINANCIERES);
-  const [declarationsFiscales, setDeclarationsFiscales] = useState<DeclarationFiscale[]>(DEMO_DECLARATIONS_FISCALES);
-  const [cloturesComptables, setCloturesComptables] = useState<ClotureComptableMensuelle[]>(DEMO_CLOTURES_COMPTABLES);
+  const [facturesClients, setFacturesClients] = useState<FactureClient[]>([]);
+  const [transactions, setTransactions] = useState<TransactionFinanciere[]>([]);
+  const [declarationsFiscales, setDeclarationsFiscales] = useState<DeclarationFiscale[]>([]);
+  const [cloturesComptables, setCloturesComptables] = useState<ClotureComptableMensuelle[]>([]);
 
   // Module Juridique State
-  const [contratsJuridiques, setContratsJuridiques] = useState<ContratJuridique[]>(DEMO_CONTRATS_JURIDIQUES);
-  const [documentsFonciers, setDocumentsFonciers] = useState<DocumentFoncierAdmin[]>(DEMO_DOCUMENTS_FONCIERS);
-  const [dossiersLitiges, setDossiersLitiges] = useState<DossierLitige[]>(DEMO_DOSSIERS_LITIGES);
+  const [contratsJuridiques, setContratsJuridiques] = useState<ContratJuridique[]>([]);
+  const [documentsFonciers, setDocumentsFonciers] = useState<DocumentFoncierAdmin[]>([]);
+  const [dossiersLitiges, setDossiersLitiges] = useState<DossierLitige[]>([]);
 
   // Module Commercial State
-  const [biensImmobiliers, setBiensImmobiliers] = useState<BienImmobilier[]>(DEMO_BIENS_IMMOBILIERS);
-  const [clientsProspects, setClientsProspects] = useState<ClientProspect[]>(DEMO_CLIENTS_PROSPECTS);
-  const [reservationsVEFA, setReservationsVEFA] = useState<ReservationVenteVEFA[]>(DEMO_RESERVATIONS_VEFA);
+  const [biensImmobiliers, setBiensImmobiliers] = useState<BienImmobilier[]>([]);
+  const [clientsProspects, setClientsProspects] = useState<ClientProspect[]>([]);
+  const [reservationsVEFA, setReservationsVEFA] = useState<ReservationVenteVEFA[]>([]);
 
   // Service Technique State
-  const [lotsTravaux, setLotsTravaux] = useState<LotTravaux[]>(DEMO_LOTS_TRAVAUX);
-  const [structuresChantier, setStructuresChantier] = useState<StructureChantier[]>(DEMO_STRUCTURE_CHANTIER);
-  const [postesTravaux, setPostesTravaux] = useState<PosteTravaux[]>(DEMO_POSTES_TRAVAUX);
-  const [metres, setMetres] = useState<MetreVérification[]>(DEMO_METRES);
-  const [rapportsChantier, setRapportsChantier] = useState<RapportChantier[]>(DEMO_RAPPORTS_CHANTIER);
-  const [controlesCTC, setControlesCTC] = useState<ControleCTC[]>(DEMO_CONTROLES_CTC);
-  const [plansBET, setPlansBET] = useState<PlanBET[]>(DEMO_PLANS_BET);
-  const [situationsTravaux, setSituationsTravaux] = useState<SituationTravaux[]>(DEMO_SITUATIONS_TRAVAUX);
+  const [lotsTravaux, setLotsTravaux] = useState<LotTravaux[]>([]);
+  const [structuresChantier, setStructuresChantier] = useState<StructureChantier[]>([]);
+  const [postesTravaux, setPostesTravaux] = useState<PosteTravaux[]>([]);
+  const [metres, setMetres] = useState<MetreVérification[]>([]);
+  const [rapportsChantier, setRapportsChantier] = useState<RapportChantier[]>([]);
+  const [controlesCTC, setControlesCTC] = useState<ControleCTC[]>([]);
+  const [plansBET, setPlansBET] = useState<PlanBET[]>([]);
+  const [situationsTravaux, setSituationsTravaux] = useState<SituationTravaux[]>([]);
 
   // RTL & Langue
   const isRtl = useMemo(() => {
