@@ -74,6 +74,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 WITH assignments(role_code, module, action) AS (
   VALUES
   ('RESPONSABLE_RH', 'DASHBOARD', 'CONSULTER'),
+  ('RESPONSABLE_RH', 'CHANTIERS', 'CONSULTER'),
   ('RESPONSABLE_RH', 'RH', 'CONSULTER'),
   ('RESPONSABLE_RH', 'RH', 'AJOUTER'),
   ('RESPONSABLE_RH', 'RH', 'MODIFIER'),
