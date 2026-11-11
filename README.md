@@ -33,7 +33,7 @@ promotedz-next/
 ├── lib/
 │   └── prisma.ts        # Singleton Prisma Client pour Next.js
 ├── prisma/
-│   ├── schema.prisma    # Modélisation PostgreSQL (28+ tables relationnelles)
+│   ├── schema.prisma    # Modélisation PostgreSQL (34 modèles métier Prisma)
 │   └── seed.ts          # Script d'importation des données démo dans PostgreSQL
 ├── services/            # Services métier (RBAC, Audit, Sécurité, Matériel)
 ├── types/               # Typage TypeScript BTP complet
@@ -109,7 +109,7 @@ Puis exécutez les scripts SQL dans `supabase/migrations/` dans l'ordre indiqué
 Créez le compte dans **Supabase → Authentication → Users**, puis exécutez `supabase/bootstrap-first-admin.sql` après avoir remplacé ses champs `REPLACE_*` par les informations de l'entreprise et l'UUID Auth. Exécutez ensuite `supabase/bootstrap-system-rbac.sql` pour initialiser les modèles de rôles et le catalogue des permissions. Les invitations ultérieures sont envoyées depuis l'administration via Supabase Auth.
 
 ### Limites de cette première tranche
-Les 31 modèles métier initiaux sont conservés ; les trois modèles de caisse portent le total à 34. Les migrations RLS 001 à 007 activent des politiques sur les 34 tables. Prisma utilise une connexion PostgreSQL indépendante de la session Supabase : les politiques RLS ne remplacent donc pas les contrôles d'accès explicites dans chaque API Prisma. Ne déployez pas en production avant d'avoir terminé ces contrôles et exécuté les tests multi-entreprises / multi-chantiers.
+Les 31 modèles métier initiaux sont conservés ; les trois modèles de caisse portent le total à 34. Les migrations RLS 001 à 008 activent des politiques sur les 34 tables. Prisma utilise une connexion PostgreSQL indépendante de la session Supabase : les politiques RLS ne remplacent donc pas les contrôles d'accès explicites dans chaque API Prisma. Ne déployez pas en production avant d'avoir terminé ces contrôles et exécuté `supabase/tests/rls_tenant_isolation.sql` sur un projet de test, puis les tests d'intégration API Prisma multi-entreprises / multi-chantiers.
 
 
 ### Extension des modules connectés à PostgreSQL
@@ -124,4 +124,9 @@ La branche de préparation ajoute aussi les API sécurisées suivantes :
 
 Pour les étapes d'installation et les scripts SQL, suivre exclusivement [SUPABASE_SETUP.md](./SUPABASE_SETUP.md). Le schéma reste à synchroniser avec `npx prisma db push`, puis les migrations RLS `001` à `007` sont à exécuter dans l'ordre. Les modèles de rôles globaux sont en lecture seule ; les copies personnalisées et leurs affectations de permissions sont isolées par entreprise. Le workflow GitHub Actions vérifie la génération Prisma et la compilation Next.js ; aucune connexion à une base de production n'est requise pendant ce contrôle.
 
-Les modèles système RBAC globaux restent en lecture seule ; les copies personnalisées par entreprise, leur matrice de permissions persistante et leur réinitialisation sont disponibles dans Administration. Les API CRUD des modules encore non connectés et les tests d'intégration multi-entreprises / multi-chantiers restent à réaliser avant la mise en production.
+Les modèles système RBAC globaux restent en lecture seule ; les copies personnalisées par entreprise, leur matrice de permissions persistante et leur réinitialisation sont disponibles dans Administration. La migration 008 ajoute des contraintes inter-entreprises sur les rôles, les affectations et les responsables de chantier, et la désactivation utilisateur suspend aussi l'identité Supabase Auth. Les API CRUD des modules encore non connectés et les tests d'intégration multi-entreprises / multi-chantiers restent à réaliser avant la mise en production.
+
+
+### Vérification RLS
+
+Après les migrations 001 à 008, exécuter `supabase/tests/rls_tenant_isolation.sql` dans le SQL Editor d’un projet de test. Le script vérifie l’isolation de deux entreprises et de chantiers distincts, puis annule ses données avec ROLLBACK. Il ne remplace pas les tests d’intégration des Route Handlers Prisma, car la connexion Prisma directe contourne RLS.
