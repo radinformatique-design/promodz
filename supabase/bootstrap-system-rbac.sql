@@ -17,7 +17,7 @@ VALUES
   (gen_random_uuid()::text, 'CONDUCTEUR_TRAVAUX', 'Conducteur de Travaux (Chantier)', 'Pilotage opérationnel et demandes d''achat de son chantier.', 'CHANTIER', now()),
   (gen_random_uuid()::text, 'METREUR_VERIFICATEUR', 'Métreur Vérificateur (Chantier)', 'Métrés et situations techniques de son chantier.', 'CHANTIER', now()),
   (gen_random_uuid()::text, 'MAGASINIER', 'Magasinier (Chantier)', 'Stocks et réceptions du magasin de son chantier.', 'CHANTIER', now())
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 WITH modules(module) AS (
   VALUES
@@ -67,6 +67,7 @@ INSERT INTO public.role_permissions (id, role_id, permission_id)
 SELECT gen_random_uuid()::text, r.id, p.id
 FROM public.roles r CROSS JOIN public.permissions p
 WHERE r.code = 'ADMINISTRATEUR'
+  AND r.entreprise_id IS NOT NULL
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Matrice de base des rôles métier (droits minimaux par fonction).
