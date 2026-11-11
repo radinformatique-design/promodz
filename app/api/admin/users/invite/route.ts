@@ -8,7 +8,13 @@ export async function POST(request: Request) {
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
   if (!isCompanyAdmin(current.profile)) return NextResponse.json({ error: 'Seul l’administrateur de l’entreprise peut inviter un utilisateur.' }, { status: 403 });
 
-  const body = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Corps JSON invalide.' }, { status: 400 });
+  }
+
   const nom = String(body?.nom || '').trim();
   const prenom = String(body?.prenom || '').trim();
   const email = String(body?.email || '').trim().toLowerCase();
@@ -17,7 +23,7 @@ export async function POST(request: Request) {
   const telephone = String(body?.telephone || '').trim();
   const poste = String(body?.poste || '').trim();
   const chantierIds: string[] = Array.isArray(body?.chantiers_assignes)
-    ? Array.from(new Set<string>((body.chantiers_assignes as unknown[]).map((id) => String(id))))
+    ? Array.from(new Set<string>((body.chantiers_assignes as unknown[]).map((id) => String(id).trim()).filter(Boolean)))
     : [];
 
   if (!nom || !prenom || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !roleId ||
@@ -33,6 +39,9 @@ export async function POST(request: Request) {
   });
   if (!role || (role.type_acces !== type && role.type_acces !== 'HYBRIDE')) {
     return NextResponse.json({ error: 'Rôle inexistant ou incompatible avec le périmètre choisi.' }, { status: 400 });
+  }
+  if (role.code === 'ADMINISTRATEUR' && role.entreprise_id !== current.profile.entreprise_id) {
+    return NextResponse.json({ error: 'Le rôle administrateur doit être celui de votre entreprise.' }, { status: 400 });
   }
   if (type === 'CHANTIER' && chantierIds.length === 0) {
     return NextResponse.json({ error: 'Un utilisateur chantier doit être affecté à au moins un chantier.' }, { status: 400 });
@@ -54,7 +63,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = createSupabaseAdminClient();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
     const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${appUrl.replace(/\/$/, '')}/auth/callback?next=/auth/reset-password`,
+      redirectTo: appUrl.replace(/\/$/, '') + '/auth/callback?next=/auth/reset-password',
       data: { nom, prenom, entreprise_id: current.profile.entreprise_id },
     });
     if (error || !data.user) {
@@ -77,28 +86,50 @@ export async function POST(request: Request) {
           statut: 'ACTIF',
         },
       });
+
       if (chantierIds.length) {
         await tx.utilisateurChantier.createMany({
-          data: chantierIds.map((chantier_id: string) => ({ utilisateur_id: user.id, chantier_id })),
+          data: chantierIds.map((chantier_id) => ({ utilisateur_id: user.id, chantier_id })),
         });
       }
+
+      await tx.auditLog.create({
+        data: {
+          entreprise_id: current.profile.entreprise_id,
+          utilisateur_id: current.profile.id,
+          module: 'ADMINISTRATION',
+          action: 'CREATION',
+          table_nom: 'utilisateurs',
+          enregistrement_id: user.id,
+          description: 'Invitation du collaborateur ' + email,
+          donnees_nouvelles: {
+            nom, prenom, email, type, role_id: roleId, chantiers_assignes: chantierIds,
+          } as any,
+        },
+      });
+
       return tx.utilisateur.findUnique({
         where: { id: user.id },
         include: { role: true, affectations: { where: { est_actif: true } } },
       });
     });
 
+    if (!profile) throw new Error('Le profil PostgreSQL n’a pas été retrouvé après sa création.');
+    const { auth_user_id: _authUserId, affectations, ...safeProfile } = profile;
+
     return NextResponse.json({
       success: true,
       invitation_sent: true,
-      message: `Invitation envoyée à ${email}.`,
-      user: profile,
+      message: 'Invitation envoyée à ' + email + '.',
+      user: {
+        ...safeProfile,
+        chantiers_assignes: affectations.map((assignment) => assignment.chantier_id),
+      },
     }, { status: 201 });
   } catch (error) {
     if (authUserId) {
       try {
-        const admin = createSupabaseAdminClient();
-        await admin.auth.admin.deleteUser(authUserId);
+        await createSupabaseAdminClient().auth.admin.deleteUser(authUserId);
       } catch (cleanupError) {
         console.error('[admin/users/invite cleanup]', cleanupError);
       }
