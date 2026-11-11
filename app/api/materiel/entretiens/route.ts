@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) {
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'MATERIEL', 'CONSULTER')) {
     return NextResponse.json({ error: 'Accès aux entretiens réservé au service matériel.' }, { status: 403 });
   }
   const chantierIds = current.profile.type === 'CHANTIER'
@@ -45,7 +45,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) {
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'MATERIEL', 'AJOUTER')) {
     return NextResponse.json({ error: 'Création d’entretien réservée au service matériel.' }, { status: 403 });
   }
   const body = await request.json();
