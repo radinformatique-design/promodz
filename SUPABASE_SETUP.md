@@ -20,10 +20,10 @@ npx prisma generate
 npx prisma db push
 ```
 
-Le schéma Prisma reste la source de vérité pour les 34 modèles métier actuels. Pour les environnements durables, convertir ensuite les changements de schéma en migrations versionnées avec `npx prisma migrate dev --name init` puis déployer avec `npx prisma migrate deploy`.
+Les 31 modèles métier initiaux sont conservés. Les trois modèles de caisse de fonds de roulement ajoutés à l'évolution précédente portent le total du schéma à 34 modèles. La migration RBAC 007 ajoute uniquement une colonne de rattachement sur le modèle `Role` : aucun modèle métier existant n'est supprimé ni remplacé. Pour les environnements durables, convertir ensuite les changements de schéma en migrations versionnées avec `npx prisma migrate dev --name init` puis déployer avec `npx prisma migrate deploy`.
 
 ## 3. Activer les politiques RLS
-Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique : `001`, `002`, `003`, `004`, `005`, puis `006`.
+Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique : `001` à `007`.
 
 - `001` : Auth, profils, entreprise et affectations.
 - `002` : accès central aux chantiers de l'entreprise.
@@ -31,6 +31,7 @@ Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts d
 - `004` : politiques métier pour achats, RH, matériel, comptabilité, commercial, juridique, notifications, documents et audit.
 - `005` : clés entreprise explicites pour les données qui peuvent ne pas être rattachées à un chantier.
 - `006` : politiques RLS des caisses chantier, mouvements, demandes de réapprovisionnement et droits dédiés.
+- `007` : rôles personnalisés par entreprise, affectations de permissions limitées à ces rôles et validation du rôle lié à chaque profil utilisateur.
 
 Les migrations `003` et `005` s'arrêtent volontairement si elles trouvent des lignes sans entreprise. La base cible étant neuve, ce contrôle doit réussir après `prisma db push`. Sur une base déjà alimentée, il faut d'abord attribuer les bons `entreprise_id` aux lignes concernées.
 
@@ -50,7 +51,7 @@ Les politiques couvrent les tables métier présentes dans les migrations, y com
 - Les mots de passe de connexion sont stockés uniquement dans les variables d'environnement locales / du fournisseur d'hébergement.
 
 ## État de cette étape
-Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_user_id`, le flux de récupération de mot de passe, les scripts de bootstrap et les politiques RLS des 34 modèles sont ajoutés. Plusieurs API métier sont connectées à Prisma avec contrôles de rôle et de périmètre ; les autres écrans et opérations doivent encore être migrés et testés. Prisma utilise une connexion PostgreSQL distincte et ne bénéficie pas automatiquement des politiques RLS de la session Supabase.
+Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_user_id`, le flux de récupération de mot de passe, les scripts de bootstrap et les politiques RLS des 34 modèles sont ajoutés. La migration 007 permet la personnalisation RBAC sans écrire dans les modèles globaux. Plusieurs API métier sont connectées à Prisma avec contrôles de rôle et de périmètre ; les autres écrans et opérations doivent encore être migrés et testés. Prisma utilise une connexion PostgreSQL distincte et ne bénéficie pas automatiquement des politiques RLS de la session Supabase.
 
 
 ## API métier ajoutées sur cette branche
@@ -79,7 +80,7 @@ Les routes contrôlent l'identité Supabase et filtrent les enregistrements Pris
 - Commercial : `RESPONSABLE_COMMERCIAL` ou `ADMINISTRATEUR`.
 - Juridique : `RESPONSABLE_JURIDIQUE` ou `ADMINISTRATEUR`.
 
-Les rôles et permissions sont des modèles système globaux. Les administrateurs d'entreprise ne peuvent pas encore modifier le catalogue partagé. Les droits sont appliqués dans les API couvertes et les politiques RLS correspondantes ; la migration du catalogue RBAC vers des rôles personnalisés par entreprise reste une étape distincte.
+Les rôles sans `entreprise_id` sont des modèles système globaux en lecture seule. Un administrateur peut créer une copie entreprise d'un modèle ; les utilisateurs de cette entreprise affectés au rôle basculent vers cette copie. La matrice des permissions est alors enregistrée en PostgreSQL pour cette seule entreprise. Le catalogue des permissions (module/action) reste un référentiel système global en lecture seule : l'administrateur gère les attributions de permissions par rôle, pas la définition des actions communes.
 
 
 ## Caisse de fonds de roulement par chantier
