@@ -1980,10 +1980,10 @@ export const AdministrationView: React.FC = () => {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 text-xs">
             <div className="flex items-center gap-2 text-rose-600 font-bold text-sm mb-2">
               <AlertTriangle className="w-5 h-5" />
-              <span>Suppression Contrôlée</span>
+              <span>Désactivation contrôlée</span>
             </div>
             <p className="text-slate-600 mb-4 leading-relaxed">
-              Confirmez-vous la suppression définitive du compte de <strong>{deleteConfirmUser.prenom} {deleteConfirmUser.nom}</strong> ({deleteConfirmUser.poste}) ? Toutes ses sessions actives seront révoquées et l'opération sera inscrite au journal d'audit.
+              Confirmez-vous la désactivation du compte de <strong>{deleteConfirmUser.prenom} {deleteConfirmUser.nom}</strong> ({deleteConfirmUser.poste}) ? Le profil et son historique métier seront conservés, l'accès applicatif sera bloqué et le compte Supabase Auth sera suspendu.
             </p>
 
             <div className="flex justify-end gap-2">
@@ -1997,7 +1997,7 @@ export const AdministrationView: React.FC = () => {
                 onClick={handleConfirmDelete}
                 className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold"
               >
-                Confirmer la suppression
+                Confirmer la désactivation
               </button>
             </div>
           </div>
