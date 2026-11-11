@@ -189,7 +189,7 @@ WITH assignments(role_code, module, action) AS (
 INSERT INTO public.role_permissions (id, role_id, permission_id)
 SELECT gen_random_uuid()::text, r.id, p.id
 FROM assignments a
-JOIN public.roles r ON r.code = a.role_code
+JOIN public.roles r ON r.code = a.role_code AND r.entreprise_id IS NULL
 JOIN public.permissions p ON p.module = a.module AND p.action = a.action
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
