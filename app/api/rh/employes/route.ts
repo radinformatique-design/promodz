@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
-function canManageHr(profile: { role: { code: string }; type: string }) {
-  return isCompanyAdmin(profile as any) || (profile.type === 'CENTRAL' && profile.role.code === 'RESPONSABLE_RH');
+function canManageHr(profile: Parameters<typeof hasPermission>[0] & { type: string }, action: 'CONSULTER' | 'AJOUTER' | 'MODIFIER' | 'SUPPRIMER') {
+  return isCompanyAdmin(profile as any) || (profile.type === 'CENTRAL' && hasPermission(profile, 'RH', action));
 }
 
 async function getScope(profile: { entreprise_id: string; type: string; affectations: Array<{ chantier_id: string }> }) {
@@ -15,7 +15,7 @@ async function getScope(profile: { entreprise_id: string; type: string; affectat
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (current.profile.type === 'CENTRAL' && !canManageHr(current.profile)) return NextResponse.json({ error: 'Accès au module RH réservé au service RH.' }, { status: 403 });
+  if (current.profile.type === 'CENTRAL' && !canManageHr(current.profile, 'CONSULTER')) return NextResponse.json({ error: 'Accès au module RH réservé au service RH.' }, { status: 403 });
   const ids = await getScope(current.profile);
   const rows = current.profile.type === 'CHANTIER'
     ? await prisma.employe.findMany({
@@ -39,7 +39,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!canManageHr(current.profile)) return NextResponse.json({ error: 'Droits RH centraux requis.' }, { status: 403 });
+  if (!canManageHr(current.profile, 'AJOUTER')) return NextResponse.json({ error: 'Permission RH / AJOUTER requise.' }, { status: 403 });
   const body = await request.json();
   const required = ['matricule', 'nom', 'prenom', 'fonction', 'qualification', 'date_recrutement', 'chantier_actuel_id'];
   if (required.some(key => !String(body?.[key] ?? '').trim())) return NextResponse.json({ error: 'Informations obligatoires de l’employé manquantes.' }, { status: 400 });
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!canManageHr(current.profile)) return NextResponse.json({ error: 'Droits RH centraux requis.' }, { status: 403 });
+  if (!canManageHr(current.profile, 'MODIFIER')) return NextResponse.json({ error: 'Permission RH / MODIFIER requise.' }, { status: 403 });
   const body = await request.json();
   if (!body?.id) return NextResponse.json({ error: 'Identifiant employé obligatoire.' }, { status: 400 });
   const ids = await getScope(current.profile);
@@ -125,7 +125,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!canManageHr(current.profile)) return NextResponse.json({ error: 'Droits RH centraux requis.' }, { status: 403 });
+  if (!canManageHr(current.profile, 'SUPPRIMER')) return NextResponse.json({ error: 'Permission RH / SUPPRIMER requise.' }, { status: 403 });
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Identifiant employé obligatoire.' }, { status: 400 });
   const ids = await getScope(current.profile);
