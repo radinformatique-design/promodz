@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (current.profile.type === 'CENTRAL' && !isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_APPROVISIONNEMENTS','RESPONSABLE_COMPTABILITE'])) return NextResponse.json({ error: 'Accès aux commandes réservé aux services approvisionnements et comptabilité.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'CONSULTER')) return NextResponse.json({ error: 'Permission APPROVISIONNEMENTS / CONSULTER requise.' }, { status: 403 });
   const chantierIds = current.profile.type === 'CHANTIER'
     ? assignedChantierIds(current.profile)
     : (await prisma.chantier.findMany({ where: { entreprise_id: current.profile.entreprise_id }, select: { id: true } })).map(x => x.id);
@@ -20,7 +20,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile)) return NextResponse.json({ error: 'Validation centrale requise pour émettre un bon de commande.' }, { status: 403 });
+  if (current.profile.type !== 'CENTRAL' || (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'AJOUTER'))) return NextResponse.json({ error: 'Permission centrale APPROVISIONNEMENTS / AJOUTER requise.' }, { status: 403 });
 
   const body = await request.json();
   const chantierId = String(body?.chantier_id || '');
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_APPROVISIONNEMENTS'])) return NextResponse.json({ error: 'Émission des commandes réservée au service approvisionnements.' }, { status: 403 });
+  if (current.profile.type !== 'CENTRAL' || (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'MODIFIER'))) return NextResponse.json({ error: 'Émission des commandes réservée au service approvisionnements.' }, { status: 403 });
   const body = await request.json();
   if (!body?.id || !['EMIS', 'ANNULE'].includes(body.statut)) return NextResponse.json({ error: 'Statut de commande invalide.' }, { status: 400 });
   const target = await prisma.bonCommande.findFirst({
