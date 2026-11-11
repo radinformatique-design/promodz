@@ -49,7 +49,7 @@ async function getBalance(caisseId: string, db: CaisseBalanceDb = prisma) {
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCentralFinance(current.profile) && !can(current.profile as any, 'CONSULTER')) {
+  if (!can(current.profile as any, 'CONSULTER')) {
     return NextResponse.json({ error: 'Permission CAISSE / CONSULTER requise.' }, { status: 403 });
   }
 
