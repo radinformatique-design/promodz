@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, isCompanyAdmin, hasAnyRole } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) {
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'MATERIEL', 'MODIFIER')) {
     return NextResponse.json({ error: 'Remplacement des pièces réservé au service matériel.' }, { status: 403 });
   }
   const body = await request.json();
