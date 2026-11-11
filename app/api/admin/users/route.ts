@@ -50,9 +50,17 @@ export async function PATCH(request: Request) {
   });
   if (!target) return NextResponse.json({ error: 'Utilisateur introuvable dans votre entreprise.' }, { status: 404 });
   const effectiveType = String(allowed.type || target.type);
-  const nextRoleCode = allowed.role_id
-    ? (await prisma.role.findUnique({ where: { id: String(allowed.role_id) }, select: { code: true } }))?.code
-    : target.role.code;
+  const effectiveRole = allowed.role_id
+    ? await prisma.role.findFirst({
+        where: {
+          id: String(allowed.role_id),
+          OR: [{ entreprise_id: null }, { entreprise_id: current.profile.entreprise_id }],
+        },
+      })
+    : target.role;
+  if (!effectiveRole) return NextResponse.json({ error: 'Rôle inconnu ou appartenant à une autre entreprise.' }, { status: 400 });
+
+  const nextRoleCode = effectiveRole.code;
   const nextStatus = String(allowed.statut || target.statut);
   if (!['CENTRAL', 'CHANTIER'].includes(effectiveType)) {
     return NextResponse.json({ error: 'Type utilisateur invalide.' }, { status: 400 });
@@ -69,10 +77,6 @@ export async function PATCH(request: Request) {
 
   if (Object.prototype.hasOwnProperty.call(updates, 'email')) return NextResponse.json({ error: 'Modifiez l’adresse e-mail dans Supabase Auth puis synchronisez le profil.' }, { status: 400 });
 
-  const effectiveRole = allowed.role_id
-    ? await prisma.role.findUnique({ where: { id: String(allowed.role_id) } })
-    : target.role;
-  if (!effectiveRole) return NextResponse.json({ error: 'Rôle inconnu.' }, { status: 400 });
   if (effectiveType === 'CENTRAL' && effectiveRole.type_acces === 'CHANTIER') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs chantier.' }, { status: 400 });
   if (effectiveType === 'CHANTIER' && effectiveRole.type_acces === 'CENTRAL') return NextResponse.json({ error: 'Ce rôle est réservé aux utilisateurs centraux.' }, { status: 400 });
   if (effectiveType === 'CHANTIER' && target.type !== 'CHANTIER' && chantiers_assignes === undefined) return NextResponse.json({ error: 'Affectez au moins un chantier à ce nouvel utilisateur chantier.' }, { status: 400 });
