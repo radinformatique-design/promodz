@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 async function scopeIds(profile: { entreprise_id: string; type: string; affectations: Array<{ chantier_id: string }> }) {
   if (profile.type === 'CHANTIER') return assignedChantierIds(profile as any);
   return (await prisma.chantier.findMany({ where: { entreprise_id: profile.entreprise_id }, select: { id: true } })).map(x => x.id);
 }
 
-function canRecord(profile: { type: string; role: { code: string } }) {
-  return isCompanyAdmin(profile as any) || profile.role.code === 'RESPONSABLE_RH' || profile.role.code === 'CONDUCTEUR_TRAVAUX';
+function canRecord(profile: Parameters<typeof hasPermission>[0]) {
+  return isCompanyAdmin(profile as any) || hasPermission(profile, 'RH', 'CONSULTER');
+}
+function canSubmit(profile: Parameters<typeof hasPermission>[0]) {
+  return isCompanyAdmin(profile as any) || hasPermission(profile, 'RH', 'AJOUTER');
 }
 
 export async function GET() {
@@ -28,7 +31,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!canRecord(current.profile)) return NextResponse.json({ error: 'Seuls les conducteurs de travaux et le service RH peuvent saisir le pointage.' }, { status: 403 });
+  if (!canSubmit(current.profile)) return NextResponse.json({ error: 'Permission RH / AJOUTER requise pour saisir le pointage.' }, { status: 403 });
   const body = await request.json();
   const date = new Date(`${String(body?.date || '')}T00:00:00.000Z`);
   if (!body?.employe_id || !body?.chantier_id || !Number.isFinite(date.getTime()) ||
