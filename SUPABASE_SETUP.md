@@ -41,7 +41,7 @@ Les politiques couvrent les tables métier présentes dans les migrations, y com
 1. Dans **Authentication → Users**, créer le compte administrateur avec son adresse e-mail.
 2. Ouvrir `supabase/bootstrap-first-admin.sql`, remplacer les champs `REPLACE_*` par les informations réelles de l'entreprise et l'UUID Auth du compte.
 3. Exécuter le script une seule fois dans le SQL Editor Supabase. Il vérifie l'existence de l'UUID Auth et la correspondance de l'e-mail, puis crée l'entreprise, le rôle administrateur, le profil et les paramètres DZD.
-4. Exécuter ensuite `supabase/bootstrap-system-rbac.sql` pour créer les 10 rôles métier complémentaires, les 110 permissions et leur matrice initiale. Le rôle administrateur est présent et dispose de toutes les permissions. Le script est idempotent : il peut être réexécuté après une mise à jour afin d'ajouter les nouvelles permissions aux rôles de référence sans dupliquer les affectations.
+4. Exécuter ensuite `supabase/bootstrap-system-rbac.sql` pour créer les 10 rôles métier complémentaires, les 110 permissions et leur matrice initiale. Le rôle administrateur est présent et dispose de toutes les permissions. Le script est idempotent : il peut être réexécuté après une mise à jour afin d'ajouter les nouvelles permissions aux modèles globaux de référence sans dupliquer les affectations ni réactiver les droits retirés des rôles personnalisés d'une entreprise.
 5. Ne pas lancer `npm run prisma:seed` en production : ce seed facultatif insère des données de démonstration.
 
 
