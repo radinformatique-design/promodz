@@ -50,11 +50,21 @@ BEGIN
     v_adresse, v_wilaya, v_telephone, v_email, now(), now()
   );
 
-  INSERT INTO public.roles (id, code, libelle, description, type_acces, created_at)
-  VALUES (gen_random_uuid()::text, 'ADMINISTRATEUR', 'Administrateur', 'Administrateur principal de l''entreprise', 'CENTRAL', now())
-  ON CONFLICT (code) DO NOTHING;
+  SELECT id INTO v_role_id
+  FROM public.roles
+  WHERE entreprise_id = v_entreprise_id AND code = 'ADMINISTRATEUR'
+  LIMIT 1;
 
-  SELECT id INTO v_role_id FROM public.roles WHERE code = 'ADMINISTRATEUR';
+  IF v_role_id IS NULL THEN
+    INSERT INTO public.roles (
+      id, entreprise_id, code, libelle, description, type_acces, created_at
+    ) VALUES (
+      gen_random_uuid()::text, v_entreprise_id, 'ADMINISTRATEUR',
+      'Administrateur', 'Administrateur principal de l''entreprise',
+      'CENTRAL', now()
+    )
+    RETURNING id INTO v_role_id;
+  END IF;
   IF v_role_id IS NULL THEN
     RAISE EXCEPTION 'Impossible de créer ou retrouver le rôle ADMINISTRATEUR.';
   END IF;
