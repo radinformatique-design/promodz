@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 async function scopeIds(profile: { entreprise_id: string; type: string; affectations: Array<{ chantier_id: string }> }) {
   if (profile.type === 'CHANTIER') return assignedChantierIds(profile as any);
   return (await prisma.chantier.findMany({ where: { entreprise_id: profile.entreprise_id }, select: { id: true } })).map(x => x.id);
 }
-function canManage(profile: { type: string; role: { code: string } }) {
-  return isCompanyAdmin(profile as any) || (profile.type === 'CENTRAL' && profile.role.code === 'RESPONSABLE_RH');
+function canManage(profile: Parameters<typeof hasPermission>[0] & { type: string }, action: 'VALIDER' | 'REFUSER') {
+  return isCompanyAdmin(profile as any) || (profile.type === 'CENTRAL' && (hasPermission(profile, 'RH', action) || hasPermission(profile, 'RH', 'MODIFIER')));
 }
-function canRequest(profile: { type: string; role: { code: string } }) {
-  return canManage(profile) || (profile.type === 'CHANTIER' && profile.role.code === 'CONDUCTEUR_TRAVAUX');
+function canRequest(profile: Parameters<typeof hasPermission>[0] & { type: string }) {
+  return isCompanyAdmin(profile as any) || hasPermission(profile, 'RH', 'CONSULTER');
+}
+function canCreateRequest(profile: Parameters<typeof hasPermission>[0] & { type: string }) {
+  return isCompanyAdmin(profile as any) || hasPermission(profile, 'RH', 'AJOUTER');
 }
 
 export async function GET() {
@@ -29,7 +32,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!canRequest(current.profile)) return NextResponse.json({ error: 'Seuls les conducteurs et le service RH peuvent déclarer une demande de congé.' }, { status: 403 });
+  if (!canCreateRequest(current.profile)) return NextResponse.json({ error: 'Permission RH / AJOUTER requise pour déclarer un congé.' }, { status: 403 });
   const body = await request.json();
   const ids = await scopeIds(current.profile);
   const employee = await prisma.employe.findFirst({
@@ -82,7 +85,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!canManage(current.profile)) return NextResponse.json({ error: 'Validation réservée au service RH central.' }, { status: 403 });
+  if (current.profile.type !== 'CENTRAL' || (!canManage(current.profile, 'VALIDER') && !canManage(current.profile, 'REFUSER'))) return NextResponse.json({ error: 'Permission centrale RH / VALIDER ou REFUSER requise.' }, { status: 403 });
   const body = await request.json();
   if (!body?.id || !['ACCEPTE','REFUSE'].includes(body.statut)) return NextResponse.json({ error: 'Statut de décision invalide.' }, { status: 400 });
   const ids = await scopeIds(current.profile);
