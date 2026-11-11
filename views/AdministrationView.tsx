@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ShieldCheck,
   Users,
@@ -134,6 +134,19 @@ export const AdministrationView: React.FC = () => {
   const [matrixRoleCategoryFilter, setMatrixRoleCategoryFilter] = useState<'ALL' | 'CENTRAL' | 'CHANTIER'>('ALL');
   const [matrixRoleFocus, setMatrixRoleFocus] = useState<string>('ALL');
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
+  const [selectedTemplateRoleId, setSelectedTemplateRoleId] = useState('');
+  const [roleActionFeedback, setRoleActionFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMatrixState(rolePermissions);
+  }, [rolePermissions]);
+
+  useEffect(() => {
+    if (!selectedTemplateRoleId) {
+      const firstTemplate = roles.find((role) => !role.entreprise_id && role.code !== 'ADMINISTRATEUR');
+      if (firstTemplate) setSelectedTemplateRoleId(firstTemplate.id);
+    }
+  }, [roles, selectedTemplateRoleId]);
 
   // Backup & Restoration State
   const [backupsList, setBackupsList] = useState<BackupSnapshot[]>(productionSecurityService.getBackups());
@@ -331,9 +344,63 @@ export const AdministrationView: React.FC = () => {
     }
   };
 
-  // Matrix toggle helper
+  const isEditableRole = (roleId: string) => {
+    const role = roles.find((item) => item.id === roleId);
+    return Boolean(role?.entreprise_id) && role?.code !== 'ADMINISTRATEUR';
+  };
+
+  const handleCustomizeRole = async () => {
+    if (!selectedTemplateRoleId) return;
+    setRoleActionFeedback(null);
+    try {
+      const response = await fetch('/api/admin/rbac', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateRoleId: selectedTemplateRoleId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Personnalisation du rôle impossible.');
+      setRoleActionFeedback('Le rôle a été copié dans votre entreprise et les utilisateurs concernés ont été basculés sur cette copie.');
+      window.location.reload();
+    } catch (error) {
+      setRoleActionFeedback(error instanceof Error ? error.message : 'Personnalisation du rôle impossible.');
+    }
+  };
+
+  const handleRenameRole = async (role: typeof roles[number]) => {
+    const libelle = window.prompt('Nouveau libellé du rôle :', role.libelle);
+    if (libelle === null || !libelle.trim()) return;
+    setRoleActionFeedback(null);
+    try {
+      const response = await fetch('/api/admin/rbac', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: role.id, libelle: libelle.trim() }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Renommage du rôle impossible.');
+      window.location.reload();
+    } catch (error) {
+      setRoleActionFeedback(error instanceof Error ? error.message : 'Renommage du rôle impossible.');
+    }
+  };
+
+  const handleResetRole = async (role: typeof roles[number]) => {
+    if (!window.confirm(`Réinitialiser « ${role.libelle} » sur le modèle système ? Les utilisateurs conserveront le même profil métier, mais retrouveront les droits par défaut.`)) return;
+    setRoleActionFeedback(null);
+    try {
+      const response = await fetch(`/api/admin/rbac?id=${encodeURIComponent(role.id)}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Réinitialisation du rôle impossible.');
+      window.location.reload();
+    } catch (error) {
+      setRoleActionFeedback(error instanceof Error ? error.message : 'Réinitialisation du rôle impossible.');
+    }
+  };
+
+  // Matrix toggle helper — les modèles globaux et l'administrateur sont en lecture seule.
   const handleToggleMatrixCell = (roleId: string, permId: string) => {
-    if (roles.find(role => role.id === roleId)?.code === 'ADMINISTRATEUR') return; // Admin is always 100% granted
+    if (!isEditableRole(roleId)) return;
 
     setMatrixState(prev => {
       const exists = prev.some(rp => rp.role_id === roleId && rp.permission_id === permId);
@@ -347,7 +414,7 @@ export const AdministrationView: React.FC = () => {
 
   // Cocher / Décocher toutes les actions d'un module pour un rôle spécifique
   const handleToggleRoleModule = (roleId: string, modCode: ModuleCode) => {
-    if (roles.find(role => role.id === roleId)?.code === 'ADMINISTRATEUR') return;
+    if (!isEditableRole(roleId)) return;
     const permIds = permissions.filter(permission => permission.module === modCode).map(permission => permission.id);
     const allGranted = permIds.every(pid =>
       matrixState.some(rp => rp.role_id === roleId && rp.permission_id === pid)
@@ -368,7 +435,7 @@ export const AdministrationView: React.FC = () => {
   // Cocher / Décocher tout un module pour tous les rôles cibles
   const handleToggleModuleAllRoles = (modCode: ModuleCode, grant: boolean) => {
     const permIds = permissions.filter(permission => permission.module === modCode).map(permission => permission.id);
-    const nonAdminRoles = roles.filter(r => r.code !== 'ADMINISTRATEUR');
+    const nonAdminRoles = roles.filter(r => Boolean(r.entreprise_id) && r.code !== 'ADMINISTRATEUR');
 
     setMatrixState(prev => {
       if (!grant) {
@@ -439,14 +506,17 @@ export const AdministrationView: React.FC = () => {
     setMatrixSuccessMsg(null);
     setMatrixErrorMsg(null);
     try {
+      const editableRoleIds = new Set(roles.filter((role) => Boolean(role.entreprise_id) && role.code !== 'ADMINISTRATEUR').map((role) => role.id));
+      const persistedAssignments = matrixState.filter((item) => editableRoleIds.has(item.role_id));
       const response = await fetch('/api/admin/rbac', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rolePermissions: matrixState }),
+        body: JSON.stringify({ rolePermissions: persistedAssignments }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Enregistrement RBAC refusé par le serveur.');
-      setMatrixSuccessMsg('La matrice des permissions a été enregistrée.');
+      setMatrixSuccessMsg(`Matrice enregistrée en base pour ${result.updated_roles || 0} rôle(s) personnalisé(s).`);
+      window.setTimeout(() => window.location.reload(), 900);
     } catch (error) {
       setMatrixErrorMsg(error instanceof Error ? error.message : 'Impossible d’enregistrer la matrice RBAC.');
     }
@@ -804,7 +874,7 @@ export const AdministrationView: React.FC = () => {
                   Configuration Complète des Habilitations par Rôle et par Module
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-                  Les rôles sont actuellement des modèles globaux en lecture seule. Leur personnalisation par entreprise sera activée après migration du catalogue RBAC vers un schéma multi-tenant, afin d’éviter qu’une entreprise modifie les droits d’une autre.
+                  Les modèles système restent protégés. Personnalisez une copie dans votre entreprise pour gérer ses droits sans modifier les autres sociétés ; les affectations des utilisateurs de ce rôle suivent automatiquement la copie locale.
                 </p>
               </div>
 
@@ -836,6 +906,50 @@ export const AdministrationView: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-3">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <select
+                  value={selectedTemplateRoleId}
+                  onChange={(event) => setSelectedTemplateRoleId(event.target.value)}
+                  className="min-w-[220px] flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"
+                >
+                  <option value="">Choisir un modèle système…</option>
+                  {roles.filter((role) => !role.entreprise_id && role.code !== 'ADMINISTRATEUR').map((role) => (
+                    <option key={role.id} value={role.id}>{role.libelle}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleCustomizeRole}
+                  disabled={!selectedTemplateRoleId}
+                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Personnaliser
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Rôles personnalisés</span>
+                {roles.filter((role) => Boolean(role.entreprise_id) && role.code !== 'ADMINISTRATEUR').map((role) => (
+                  <span key={role.id} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[11px] text-emerald-800">
+                    {role.libelle}
+                    <button onClick={() => handleRenameRole(role)} className="rounded p-1 hover:bg-emerald-100" title="Renommer">
+                      <Edit className="h-3 w-3" />
+                    </button>
+                    <button onClick={() => handleResetRole(role)} className="rounded p-1 hover:bg-rose-100 hover:text-rose-700" title="Réinitialiser sur le modèle">
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {!roles.some((role) => Boolean(role.entreprise_id) && role.code !== 'ADMINISTRATEUR') && (
+                  <span className="text-[11px] text-slate-400">Aucune copie locale pour le moment.</span>
+                )}
+              </div>
+            </div>
+            {roleActionFeedback && (
+              <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+                {roleActionFeedback}
+              </div>
+            )}
 
             {/* Notifications & Change Alerts */}
             {matrixSuccessMsg && (
@@ -1091,7 +1205,7 @@ export const AdministrationView: React.FC = () => {
                                     </span>
                                   </div>
 
-                                  {!isAdmin && (
+                                  {Boolean(r.entreprise_id) && !isAdmin && (
                                     <div className="mt-1.5">
                                       <button
                                         onClick={() => handleToggleRoleModule(r.id, mod.code)}
@@ -1128,6 +1242,7 @@ export const AdministrationView: React.FC = () => {
 
                                 {filteredRoles.map((r) => {
                                   const isAdmin = r.code === 'ADMINISTRATEUR';
+                                  const isReadOnly = isAdmin || !r.entreprise_id;
                                   const isGranted = isAdmin || matrixState.some(
                                     rp => rp.role_id === r.id && rp.permission_id === permId
                                   );
@@ -1139,9 +1254,9 @@ export const AdministrationView: React.FC = () => {
                                         isAdmin ? 'bg-amber-50/30' : isGranted ? 'bg-emerald-50/30' : ''
                                       }`}
                                     >
-                                      {isAdmin ? (
-                                        <div className="flex items-center justify-center" title="Administrateur : Accès intégral et permanent garanti par le système">
-                                          <div className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center shadow-2xs">
+                                      {isReadOnly ? (
+                                        <div className="flex items-center justify-center" title={isAdmin ? "Administrateur : accès intégral et permanent" : "Modèle système : personnalisez ce rôle pour modifier ses droits"}>
+                                          <div className={`w-5 h-5 rounded-md flex items-center justify-center shadow-2xs ${isAdmin ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>
                                             <Lock className="w-3 h-3" />
                                           </div>
                                         </div>
