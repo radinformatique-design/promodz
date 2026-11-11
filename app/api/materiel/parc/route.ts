@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) return NextResponse.json({ error: 'Accès au parc réservé au service matériel.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'MATERIEL', 'CONSULTER')) return NextResponse.json({ error: 'Accès au parc réservé au service matériel.' }, { status: 403 });
 
   const chantierIds = current.profile.type === 'CHANTIER'
     ? assignedChantierIds(current.profile)
@@ -30,7 +30,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) return NextResponse.json({ error: 'Gestion du parc réservée au service matériel.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'MATERIEL', 'AJOUTER')) return NextResponse.json({ error: 'Gestion du parc réservée au service matériel.' }, { status: 403 });
 
   try {
     const body = await req.json();
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 export async function PATCH(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) {
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'MATERIEL', 'MODIFIER')) {
     return NextResponse.json({ error: 'Modification du parc réservée au service matériel.' }, { status: 403 });
   }
 
@@ -159,7 +159,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_MATERIEL'])) {
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'MATERIEL', 'SUPPRIMER')) {
     return NextResponse.json({ error: 'Gestion du parc réservée au service matériel.' }, { status: 403 });
   }
   const id = new URL(request.url).searchParams.get('id');
