@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (current.profile.type === 'CENTRAL' && !['ADMINISTRATEUR','RESPONSABLE_APPROVISIONNEMENTS'].includes(current.profile.role.code)) return NextResponse.json({ error: 'Accès aux réceptions réservé aux services concernés.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'CONSULTER')) return NextResponse.json({ error: 'Permission APPROVISIONNEMENTS / CONSULTER requise.' }, { status: 403 });
   const ids = current.profile.type === 'CHANTIER'
     ? assignedChantierIds(current.profile)
     : (await prisma.chantier.findMany({ where: { entreprise_id: current.profile.entreprise_id }, select: { id: true } })).map(x => x.id);
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     select: { id: true, chantier_id: true },
   });
   if (!order) return NextResponse.json({ error: 'Commande inaccessible, annulée ou déjà réceptionnée.' }, { status: 404 });
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'AJOUTER')) return NextResponse.json({ error: 'Permission APPROVISIONNEMENTS / AJOUTER requise.' }, { status: 403 });
 
   const numero = `BL-${Date.now().toString(36).toUpperCase()}`;
   try {
