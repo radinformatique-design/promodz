@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (current.profile.type === 'CENTRAL' && !isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_APPROVISIONNEMENTS','RESPONSABLE_COMPTABILITE'])) return NextResponse.json({ error: 'Accès aux demandes réservé aux services approvisionnements et comptabilité.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'CONSULTER')) return NextResponse.json({ error: 'Permission APPROVISIONNEMENTS / CONSULTER requise.' }, { status: 403 });
   const chantierIds = current.profile.type === 'CHANTIER'
     ? assignedChantierIds(current.profile)
     : (await prisma.chantier.findMany({ where: { entreprise_id: current.profile.entreprise_id }, select: { id: true } })).map(x => x.id);
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     select: { id: true, code_chantier: true, nom_projet: true },
   });
   if (!chantier) return NextResponse.json({ error: 'Chantier inaccessible ou inexistant.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'AJOUTER')) return NextResponse.json({ error: 'Permission APPROVISIONNEMENTS / AJOUTER requise.' }, { status: 403 });
   const lignes = body?.lignes_articles;
   if (!Array.isArray(lignes) || lignes.length === 0 || !String(body?.description || '').trim()) {
     return NextResponse.json({ error: 'La description et au moins une ligne article sont obligatoires.' }, { status: 400 });
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile)) return NextResponse.json({ error: 'Seul un administrateur central peut traiter les demandes.' }, { status: 403 });
+  if (current.profile.type !== 'CENTRAL' || (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'VALIDER') && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'REFUSER'))) return NextResponse.json({ error: 'Permission centrale de traitement des demandes requise.' }, { status: 403 });
   const body = await request.json();
   if (!body?.id || !['APPROUVEE', 'REFUSEE'].includes(body.statut)) {
     return NextResponse.json({ error: 'Identifiant ou statut de traitement invalide.' }, { status: 400 });
