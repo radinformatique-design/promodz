@@ -40,6 +40,7 @@ model Entreprise {
 
   chantiers           Chantier[]
   utilisateurs        Utilisateur[]
+  roles               Role[]
   comptesBancaires    CompteBancaire[]
   parametres          ParametresGeneraux[]
   fournisseurs        Fournisseur[]
@@ -192,16 +193,19 @@ model Utilisateur {
 }
 
 model Role {
-  id          String   @id @default(uuid())
-  code        String   @unique // ADMINISTRATEUR, CONDUCTEUR_TRAVAUX, etc.
-  libelle     String
-  description String?
-  type_acces  String   @default("CENTRAL") @map("type_acces") // CENTRAL | CHANTIER | HYBRIDE
-  created_at  DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  entreprise_id String?  @map("entreprise_id")
+  code          String   // Code métier ; unique globalement pour les modèles et par entreprise pour les personnalisations
+  libelle       String
+  description   String?
+  type_acces    String   @default("CENTRAL") @map("type_acces") // CENTRAL | CHANTIER | HYBRIDE
+  created_at    DateTime @default(now()) @map("created_at")
 
-  utilisateurs Utilisateur[]
-  permissions  RolePermission[]
+  entreprise    Entreprise? @relation(fields: [entreprise_id], references: [id], onDelete: Cascade)
+  utilisateurs  Utilisateur[]
+  permissions   RolePermission[]
 
+  @@index([entreprise_id])
   @@map("roles")
 }
 
