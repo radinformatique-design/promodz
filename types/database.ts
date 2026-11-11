@@ -244,6 +244,7 @@ export interface PasswordResetRequest {
 
 export interface Role {
   id: string;
+  entreprise_id?: string | null;
   code: UserRole;
   libelle: string;
   description: string;
