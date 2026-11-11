@@ -63,52 +63,6 @@ import {
   ClientProspect,
   ReservationVenteVEFA
 } from '../types/database';
-import {
-  DEMO_ENTREPRISE,
-  DEMO_CHANTIERS,
-  DEMO_NOTIFICATIONS,
-  DEMO_AUDIT_LOGS,
-  DEMO_DOCUMENTS,
-  DEMO_COMPTES_BANCAIRES,
-  DEMO_PARAMETRES_GENERAUX,
-  DEMO_EMPLOYES,
-  DEMO_AFFECTATIONS_HISTORIQUE,
-  DEMO_CONGES_ABSENCES,
-  DEMO_POINTAGES,
-  DEMO_DEMANDES_DEROGATION,
-  DEMO_FOURNISSEURS,
-  DEMO_DEMANDES_ACHAT,
-  DEMO_COMPARAISONS_OFFRES,
-  DEMO_BONS_COMMANDE,
-  DEMO_BONS_LIVRAISON_RECEPTION,
-  DEMO_FACTURES_FOURNISSEURS,
-  DEMO_ARTICLES_STOCK,
-  DEMO_MOUVEMENTS_STOCK,
-  DEMO_BONS_SORTIE,
-  DEMO_TRANSFERTS_CHANTIERS,
-  DEMO_INVENTAIRES_MAGASIN,
-  DEMO_VEHICULES,
-  DEMO_ENTRETIENS,
-  DEMO_PIECES_REMPLACABLES,
-  DEMO_LOTS_TRAVAUX,
-  DEMO_STRUCTURE_CHANTIER,
-  DEMO_POSTES_TRAVAUX,
-  DEMO_METRES,
-  DEMO_RAPPORTS_CHANTIER,
-  DEMO_CONTROLES_CTC,
-  DEMO_PLANS_BET,
-  DEMO_SITUATIONS_TRAVAUX,
-  DEMO_FACTURES_CLIENTS,
-  DEMO_TRANSACTIONS_FINANCIERES,
-  DEMO_DECLARATIONS_FISCALES,
-  DEMO_CLOTURES_COMPTABLES,
-  DEMO_CONTRATS_JURIDIQUES,
-  DEMO_DOCUMENTS_FONCIERS,
-  DEMO_DOSSIERS_LITIGES,
-  DEMO_BIENS_IMMOBILIERS,
-  DEMO_CLIENTS_PROSPECTS,
-  DEMO_RESERVATIONS_VEFA
-} from '../data/demoData';
 import { authService, VerificationResult } from '../services/authService';
 
 interface AppContextType {
@@ -318,17 +272,17 @@ interface AppContextType {
   entretiens: Entretien[];
   piecesRemplacables: PieceRemplacable[];
   
-  ajouterVehicule: (data: Omit<Vehicule, 'id' | 'created_at'>) => Vehicule;
-  modifierVehicule: (id: string, updates: Partial<Vehicule>) => Vehicule | null;
-  supprimerVehicule: (id: string) => boolean;
-  affecterVehiculeChantier: (vehiculeId: string, chantierId: string, chantierNom: string, conducteurNom: string, motif?: string, bonTransfertRef?: string) => Vehicule | null;
-  mettreAJourCompteur: (vehiculeId: string, nouveauKm?: number, nouvellesHeures?: number) => Vehicule | null;
-  enregistrerEntretien: (data: Omit<Entretien, 'id' | 'created_at'>) => Entretien;
-  declarerPanne: (vehiculeId: string, description: string, gravite?: 'FAIBLE' | 'MOYENNE' | 'CRITIQUE' | 'IMMOBILISATION', garageNom?: string, coutEstime?: number) => Entretien;
-  renouvelerAssurance: (vehiculeId: string, nouvelleCompagnie: string, nouvellePolice: string, dateDebut: string, dateFin: string, coutDzd: number, quittanceRef?: string) => Vehicule | null;
+  ajouterVehicule: (data: Omit<Vehicule, 'id' | 'created_at'>) => Promise<Vehicule | null>;
+  modifierVehicule: (id: string, updates: Partial<Vehicule>) => Promise<Vehicule | null>;
+  supprimerVehicule: (id: string) => Promise<boolean>;
+  affecterVehiculeChantier: (vehiculeId: string, chantierId: string, chantierNom: string, conducteurNom: string, motif?: string, bonTransfertRef?: string) => Promise<Vehicule | null>;
+  mettreAJourCompteur: (vehiculeId: string, nouveauKm?: number, nouvellesHeures?: number) => Promise<Vehicule | null>;
+  enregistrerEntretien: (data: Omit<Entretien, 'id' | 'created_at'>) => Promise<Entretien | null>;
+  declarerPanne: (vehiculeId: string, description: string, gravite?: 'FAIBLE' | 'MOYENNE' | 'CRITIQUE' | 'IMMOBILISATION', garageNom?: string, coutEstime?: number) => Promise<Entretien | null>;
+  renouvelerAssurance: (vehiculeId: string, nouvelleCompagnie: string, nouvellePolice: string, dateDebut: string, dateFin: string, coutDzd: number, quittanceRef?: string) => Promise<Vehicule | null>;
   gererPieceRemplacable: (data: Omit<PieceRemplacable, 'id' | 'created_at'>) => PieceRemplacable;
-  permuterPneus: (vehiculeId: string, pieceId1: string, pieceId2: string, km: number, motif: string, operateur: string) => boolean;
-  remplacerPieceRemplacable: (pieceId: string, nouvellePiece: Omit<PieceRemplacable, 'id' | 'created_at'>, motif: string, note?: string) => PieceRemplacable | null;
+  permuterPneus: (vehiculeId: string, pieceId1: string, pieceId2: string, km: number, motif: string, operateur: string) => Promise<boolean>;
+  remplacerPieceRemplacable: (pieceId: string, nouvellePiece: Omit<PieceRemplacable, 'id' | 'created_at'>, motif: string, note?: string) => Promise<PieceRemplacable | null>;
 
   // Comptabilité & Fiscalité
   facturesClients: FactureClient[];
@@ -394,82 +348,373 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [entreprise, setEntreprise] = useState<Entreprise>(DEMO_ENTREPRISE);
-  const [comptesBancaires, setComptesBancaires] = useState<CompteBancaire[]>(DEMO_COMPTES_BANCAIRES);
-  const [parametresGeneraux, setParametresGeneraux] = useState<ParametresGeneraux>(DEMO_PARAMETRES_GENERAUX);
+  const [entreprise, setEntreprise] = useState<Entreprise>({} as Entreprise);
+  const [comptesBancaires, setComptesBancaires] = useState<CompteBancaire[]>([]);
+  const [parametresGeneraux, setParametresGeneraux] = useState<ParametresGeneraux>({} as ParametresGeneraux);
   const [currentLanguage, setCurrentLanguageState] = useState<'fr' | 'ar'>('fr');
-  const [allChantiers, setAllChantiers] = useState<Chantier[]>(DEMO_CHANTIERS);
-  const [currentUser, setCurrentUser] = useState<Utilisateur | null>(authService.getAuthenticatedUser());
-  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>(authService.getAllUsers());
-  const [roles, setRoles] = useState<Role[]>(authService.getAllRoles());
-  const [permissions, setPermissions] = useState<Permission[]>(authService.getAllPermissions());
-  const [rolePermissions, setRolePermissions] = useState<RolePermission[]>(authService.getRolePermissions());
+  const [allChantiers, setAllChantiers] = useState<Chantier[]>([]);
+  const [currentUser, setCurrentUser] = useState<Utilisateur | null>(null);
+  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
   
   const [selectedChantierId, setSelectedChantierId] = useState<string | 'ALL'>('ALL');
-  const [notifications, setNotifications] = useState<Notification[]>(DEMO_NOTIFICATIONS);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(DEMO_AUDIT_LOGS);
-  const [documents, setDocuments] = useState<DocumentGED[]>(DEMO_DOCUMENTS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [documents, setDocuments] = useState<DocumentGED[]>([]);
   const [activeNav, setActiveNavState] = useState<string>('dashboard');
   const [securityViolation, setSecurityViolation] = useState<{ module: string; message: string; ruleCode: string } | null>(null);
 
   // RH & Pointage State
-  const [employes, setEmployes] = useState<Employe[]>(DEMO_EMPLOYES);
-  const [affectationsHistorique, setAffectationsHistorique] = useState<AffectationHistorique[]>(DEMO_AFFECTATIONS_HISTORIQUE);
-  const [congesAbsences, setCongesAbsences] = useState<CongeAbsence[]>(DEMO_CONGES_ABSENCES);
-  const [pointages, setPointages] = useState<PointageLigne[]>(DEMO_POINTAGES);
-  const [demandesDerogation, setDemandesDerogation] = useState<DemandeDerogationPointage[]>(DEMO_DEMANDES_DEROGATION);
+  const [employes, setEmployes] = useState<Employe[]>([]);
+  const [affectationsHistorique, setAffectationsHistorique] = useState<AffectationHistorique[]>([]);
+  const [congesAbsences, setCongesAbsences] = useState<CongeAbsence[]>([]);
+  const [pointages, setPointages] = useState<PointageLigne[]>([]);
+  const [demandesDerogation, setDemandesDerogation] = useState<DemandeDerogationPointage[]>([]);
   const [simulatedPointageTime, setSimulatedPointageTime] = useState<string>('08:00');
 
   // Approvisionnements State (Circuit Direct Chantiers)
-  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>(DEMO_FOURNISSEURS);
-  const [demandesAchat, setDemandesAchat] = useState<DemandeAchat[]>(DEMO_DEMANDES_ACHAT);
-  const [comparaisonsOffres, setComparaisonsOffres] = useState<ComparaisonOffre[]>(DEMO_COMPARAISONS_OFFRES);
-  const [bonsCommande, setBonsCommande] = useState<BonCommande[]>(DEMO_BONS_COMMANDE);
-  const [receptionsChantier, setReceptionsChantier] = useState<BonLivraisonReception[]>(DEMO_BONS_LIVRAISON_RECEPTION);
-  const [facturesFournisseurs, setFacturesFournisseurs] = useState<FactureFournisseur[]>(DEMO_FACTURES_FOURNISSEURS);
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([]);
+  const [demandesAchat, setDemandesAchat] = useState<DemandeAchat[]>([]);
+  const [comparaisonsOffres, setComparaisonsOffres] = useState<ComparaisonOffre[]>([]);
+  const [bonsCommande, setBonsCommande] = useState<BonCommande[]>([]);
+  const [receptionsChantier, setReceptionsChantier] = useState<BonLivraisonReception[]>([]);
+  const [facturesFournisseurs, setFacturesFournisseurs] = useState<FactureFournisseur[]>([]);
 
   // Magasin & Stock State (100% indépendant par chantier)
-  const [articlesStock, setArticlesStock] = useState<ArticleStock[]>(DEMO_ARTICLES_STOCK);
-  const [mouvementsStock, setMouvementsStock] = useState<MouvementStock[]>(DEMO_MOUVEMENTS_STOCK);
-  const [bonsSortie, setBonsSortie] = useState<BonSortie[]>(DEMO_BONS_SORTIE);
-  const [transfertsInterChantier, setTransfertsInterChantier] = useState<TransfertInterChantier[]>(DEMO_TRANSFERTS_CHANTIERS);
-  const [inventairesMagasin, setInventairesMagasin] = useState<InventaireMagasin[]>(DEMO_INVENTAIRES_MAGASIN);
+  const [articlesStock, setArticlesStock] = useState<ArticleStock[]>([]);
+  const [mouvementsStock, setMouvementsStock] = useState<MouvementStock[]>([]);
+  const [bonsSortie, setBonsSortie] = useState<BonSortie[]>([]);
+  const [transfertsInterChantier, setTransfertsInterChantier] = useState<TransfertInterChantier[]>([]);
+  const [inventairesMagasin, setInventairesMagasin] = useState<InventaireMagasin[]>([]);
 
   // Matériel & Parc Automobile
-  const [vehicules, setVehicules] = useState<Vehicule[]>(DEMO_VEHICULES);
-  const [entretiens, setEntretiens] = useState<Entretien[]>(DEMO_ENTRETIENS);
-  const [piecesRemplacables, setPiecesRemplacables] = useState<PieceRemplacable[]>(DEMO_PIECES_REMPLACABLES);
+  const [vehicules, setVehicules] = useState<Vehicule[]>([]);
+  const [entretiens, setEntretiens] = useState<Entretien[]>([]);
+  const [piecesRemplacables, setPiecesRemplacables] = useState<PieceRemplacable[]>([]);
 
   // Comptabilité & Fiscalité State
-  const [facturesClients, setFacturesClients] = useState<FactureClient[]>(DEMO_FACTURES_CLIENTS);
-  const [transactions, setTransactions] = useState<TransactionFinanciere[]>(DEMO_TRANSACTIONS_FINANCIERES);
-  const [declarationsFiscales, setDeclarationsFiscales] = useState<DeclarationFiscale[]>(DEMO_DECLARATIONS_FISCALES);
-  const [cloturesComptables, setCloturesComptables] = useState<ClotureComptableMensuelle[]>(DEMO_CLOTURES_COMPTABLES);
+  const [facturesClients, setFacturesClients] = useState<FactureClient[]>([]);
+  const [transactions, setTransactions] = useState<TransactionFinanciere[]>([]);
+  const [declarationsFiscales, setDeclarationsFiscales] = useState<DeclarationFiscale[]>([]);
+  const [cloturesComptables, setCloturesComptables] = useState<ClotureComptableMensuelle[]>([]);
 
   // Module Juridique State
-  const [contratsJuridiques, setContratsJuridiques] = useState<ContratJuridique[]>(DEMO_CONTRATS_JURIDIQUES);
-  const [documentsFonciers, setDocumentsFonciers] = useState<DocumentFoncierAdmin[]>(DEMO_DOCUMENTS_FONCIERS);
-  const [dossiersLitiges, setDossiersLitiges] = useState<DossierLitige[]>(DEMO_DOSSIERS_LITIGES);
+  const [contratsJuridiques, setContratsJuridiques] = useState<ContratJuridique[]>([]);
+  const [documentsFonciers, setDocumentsFonciers] = useState<DocumentFoncierAdmin[]>([]);
+  const [dossiersLitiges, setDossiersLitiges] = useState<DossierLitige[]>([]);
 
   // Module Commercial State
-  const [biensImmobiliers, setBiensImmobiliers] = useState<BienImmobilier[]>(DEMO_BIENS_IMMOBILIERS);
-  const [clientsProspects, setClientsProspects] = useState<ClientProspect[]>(DEMO_CLIENTS_PROSPECTS);
-  const [reservationsVEFA, setReservationsVEFA] = useState<ReservationVenteVEFA[]>(DEMO_RESERVATIONS_VEFA);
+  const [biensImmobiliers, setBiensImmobiliers] = useState<BienImmobilier[]>([]);
+  const [clientsProspects, setClientsProspects] = useState<ClientProspect[]>([]);
+  const [reservationsVEFA, setReservationsVEFA] = useState<ReservationVenteVEFA[]>([]);
 
   // Service Technique State
-  const [lotsTravaux, setLotsTravaux] = useState<LotTravaux[]>(DEMO_LOTS_TRAVAUX);
-  const [structuresChantier, setStructuresChantier] = useState<StructureChantier[]>(DEMO_STRUCTURE_CHANTIER);
-  const [postesTravaux, setPostesTravaux] = useState<PosteTravaux[]>(DEMO_POSTES_TRAVAUX);
-  const [metres, setMetres] = useState<MetreVérification[]>(DEMO_METRES);
-  const [rapportsChantier, setRapportsChantier] = useState<RapportChantier[]>(DEMO_RAPPORTS_CHANTIER);
-  const [controlesCTC, setControlesCTC] = useState<ControleCTC[]>(DEMO_CONTROLES_CTC);
-  const [plansBET, setPlansBET] = useState<PlanBET[]>(DEMO_PLANS_BET);
-  const [situationsTravaux, setSituationsTravaux] = useState<SituationTravaux[]>(DEMO_SITUATIONS_TRAVAUX);
+  const [lotsTravaux, setLotsTravaux] = useState<LotTravaux[]>([]);
+  const [structuresChantier, setStructuresChantier] = useState<StructureChantier[]>([]);
+  const [postesTravaux, setPostesTravaux] = useState<PosteTravaux[]>([]);
+  const [metres, setMetres] = useState<MetreVérification[]>([]);
+  const [rapportsChantier, setRapportsChantier] = useState<RapportChantier[]>([]);
+  const [controlesCTC, setControlesCTC] = useState<ControleCTC[]>([]);
+  const [plansBET, setPlansBET] = useState<PlanBET[]>([]);
+  const [situationsTravaux, setSituationsTravaux] = useState<SituationTravaux[]>([]);
 
   // RTL & Langue
   const isRtl = useMemo(() => {
     return currentLanguage === 'ar' || parametresGeneraux.is_rtl;
   }, [currentLanguage, parametresGeneraux.is_rtl]);
+
+  const loadApplicationData = async () => {
+    try {
+      const readApi = async (path: string) => {
+        const response = await fetch(path, { cache: 'no-store' });
+        if (!response.ok) return null;
+        return response.json();
+      };
+
+      const [
+        bootstrap,
+        supplierRows,
+        demandRows,
+        orderRows,
+        receptionRows,
+        invoiceRows,
+        notificationRows,
+        auditRows,
+        pointageRows,
+        leaveRows,
+        materialRows,
+        userRows,
+        rbac,
+      ] = await Promise.all([
+        readApi('/api/app/bootstrap'),
+        readApi('/api/approvisionnements/fournisseurs'),
+        readApi('/api/approvisionnements/demandes'),
+        readApi('/api/approvisionnements/commandes'),
+        readApi('/api/approvisionnements/receptions'),
+        readApi('/api/approvisionnements/factures'),
+        readApi('/api/notifications'),
+        readApi('/api/audit-logs'),
+        readApi('/api/rh/pointages'),
+        readApi('/api/rh/conges'),
+        readApi('/api/materiel/parc'),
+        readApi('/api/admin/users'),
+        readApi('/api/admin/rbac'),
+      ]);
+
+      if (bootstrap) {
+        if (bootstrap.entreprise) setEntreprise(bootstrap.entreprise);
+        if (bootstrap.parametresGeneraux) setParametresGeneraux(bootstrap.parametresGeneraux);
+        setAllChantiers(bootstrap.chantiers || []);
+        setComptesBancaires(bootstrap.comptesBancaires || []);
+        setEmployes((bootstrap.employes || []).map((employee: any) => ({
+          ...employee,
+          entreprise_id: bootstrap.entreprise?.id || '',
+          date_naissance: employee.date_naissance || '',
+          lieu_naissance: '',
+          wilaya_naissance: '',
+          nationalite: 'Algérienne',
+          nin: '',
+          num_cnas: employee.num_securite_sociale || '',
+          commune: employee.chantierActuel?.commune || '',
+          wilaya: employee.chantierActuel?.wilaya || '',
+          personne_urgence_nom: '',
+          personne_urgence_tel: '',
+          categorie: employee.fonction || 'OUVRIER',
+          date_embauche: employee.date_recrutement || '',
+          salaire_base_dzd: Number(employee.salaire_base_dzd || 0),
+          chantier_actuel_nom: employee.chantierActuel?.nom_projet || '',
+          date_affectation_actuelle: '',
+          documents_fournis: {
+            carte_chifa_cnas: false,
+            certificat_medical_aptitude: false,
+            copie_cni_nin: false,
+            attestation_travail_ou_diplome: false,
+            photos_identite: false,
+            fiche_anthropometrique: false,
+          },
+          updated_at: employee.created_at,
+        })) as unknown as Employe[]);
+      }
+
+      if (materialRows) {
+        setVehicules(materialRows.map((row: any) => ({
+          ...row,
+          entreprise_id: row.entreprise_id,
+          num_interne: row.code_parc,
+          categorie: row.type_engin,
+          statut: row.statut_operationnel,
+          heures_fonctionnement: row.compteur_heures,
+          chantier_id: row.chantier_actuel_id || undefined,
+          date_prochaine_vidange: row.date_prochaine_vidange || undefined,
+          date_prochain_controle_technique: row.date_prochain_controle_technique || undefined,
+          date_fin_assurance: row.date_fin_assurance || undefined,
+          created_at: row.created_at,
+        })) as unknown as Vehicule[]);
+        setEntretiens(materialRows.flatMap((vehicle: any) => (vehicle.entretiens || []).map((item: any) => ({
+          ...item,
+          vehicule_id: vehicle.id,
+          vehicule_nom: [vehicle.marque, vehicle.modele].filter(Boolean).join(' '),
+          date: item.date,
+          cout: Number(item.cout || 0),
+          piece_rechange_utilisee: item.piece_rechange || '',
+        }))) as unknown as Entretien[]);
+        setPiecesRemplacables(materialRows.flatMap((vehicle: any) => (vehicle.piecesRemplacables || []).map((item: any) => ({
+          ...item,
+          vehicule_id: vehicle.id,
+          cout_achat_dzd: Number(item.cout_achat_dzd || 0),
+          date_installation: item.date_installation,
+          profondeur_sculpture_mm: item.profondeur_sculpture_mm == null ? undefined : Number(item.profondeur_sculpture_mm),
+        }))) as unknown as PieceRemplacable[]);
+      }
+
+      if (supplierRows) setFournisseurs(supplierRows.map((row: any) => ({
+        ...row,
+        nom_fournisseur: row.raison_sociale,
+        forme_juridique: 'SARL',
+        nif: row.nif || '',
+        rc: row.rc || '',
+        nis: row.nis || '',
+        contact_commercial: '',
+        delai_livraison_moyen_jours: 0,
+        conditions_paiement: '',
+        note_qualite: Number(row.note_evaluation ?? 4),
+      })) as unknown as Fournisseur[]);
+
+      if (demandRows) setDemandesAchat(demandRows.map((row: any) => {
+        const line = Array.isArray(row.lignes_articles) ? row.lignes_articles[0] || {} : {};
+        return {
+          ...row,
+          chantier_nom: row.chantier?.nom_projet || '',
+          demandeur_nom: [row.demandeur?.prenom, row.demandeur?.nom].filter(Boolean).join(' '),
+          demandeur_role: row.demandeur?.role?.libelle || '',
+          designation_produit: line.designation || line.designation_produit || row.description,
+          famille_article: line.famille_article || line.categorie || '',
+          quantite_demandee: Number(line.quantite_demandee ?? line.quantite ?? 0),
+          unite_mesure: line.unite_mesure || line.unite || 'Unité',
+          niveau_urgence: row.priorite,
+          justification: row.description,
+          date_besoin_chantier: line.date_besoin_chantier || '',
+          estimation_budget_dzd: Number(row.montant_estime || 0),
+          historique_validations: [],
+          bon_commande_id: row.bonsCommande?.[0]?.id,
+        };
+      }) as unknown as DemandeAchat[]);
+
+      if (orderRows) setBonsCommande(orderRows.map((row: any) => {
+        const line = Array.isArray(row.lignes_articles) ? row.lignes_articles[0] || {} : {};
+        return {
+          ...row,
+          demande_achat_ref: row.demandeAchat?.numero_da || '',
+          fournisseur_nom: row.fournisseur?.raison_sociale || '',
+          fournisseur_nif: row.fournisseur?.nif || '',
+          fournisseur_rc: row.fournisseur?.rc || '',
+          fournisseur_telephone: row.fournisseur?.telephone || '',
+          chantier_destinataire_id: row.chantier_id,
+          chantier_destinataire_nom: row.chantier?.nom_projet || '',
+          adresse_livraison: row.chantier?.adresse_site || '',
+          contact_reception_magasinier: '',
+          date_livraison_prevue: row.delai_livraison || row.date_commande,
+          designation_marchandise: line.designation || line.designation_produit || '',
+          quantite_commandee: Number(line.quantite_commandee ?? line.quantite ?? 0),
+          unite_mesure: line.unite_mesure || line.unite || 'Unité',
+          prix_unitaire_ht_dzd: Number(line.prix_unitaire_ht_dzd ?? line.prix_unitaire_ht ?? 0),
+          montant_total_ht_dzd: Number(row.total_ht || 0),
+          taux_tva_pct: Number(row.total_ht) > 0 ? Number(row.total_tva) / Number(row.total_ht) * 100 : 0,
+          montant_tva_dzd: Number(row.total_tva || 0),
+          montant_total_ttc_dzd: Number(row.total_ttc || 0),
+          delai_paiement: '',
+          statut: row.statut === 'RECU_PARTIEL' ? 'LIVRE_PARTIEL' : row.statut === 'RECU_TOTAL' ? 'LIVRE_TOTAL' : row.statut,
+        };
+      }) as unknown as BonCommande[]);
+
+      if (receptionRows) setReceptionsChantier(receptionRows.map((row: any) => {
+        const lines = Array.isArray(row.lignes_recues) ? row.lignes_recues : [];
+        const quantity = lines.reduce((sum: number, line: any) => sum + Number(line.quantite_recue ?? line.quantite ?? 0), 0);
+        return {
+          ...row,
+          numero_bl_fournisseur: row.numero_bl,
+          numero_br_interne: row.numero_bl,
+          bon_commande_ref: row.bonCommande?.numero_bc || '',
+          chantier_nom: row.chantier?.nom_projet || '',
+          magasinier_id: currentUser?.id || '',
+          magasinier_nom: currentUser ? [currentUser.prenom, currentUser.nom].join(' ') : '',
+          fournisseur_nom: row.bonCommande?.fournisseur?.raison_sociale || '',
+          quantite_recue: quantity,
+          unite_mesure: lines[0]?.unite_mesure || lines[0]?.unite || 'Unité',
+          quantite_conforme: row.statut_conforme ? quantity : 0,
+          quantite_rejetee: row.statut_conforme ? 0 : quantity,
+          conformite_qualite: row.statut_conforme ? 'CONFORME' : 'NON_CONFORME',
+          visa_magasinier: true,
+          statut: row.statut_conforme ? 'RECEPTIONNE_CONFORME' : 'AVEC_RESERVES',
+        };
+      }) as unknown as BonLivraisonReception[]);
+
+      if (invoiceRows) setFacturesFournisseurs(invoiceRows.map((row: any) => ({
+        ...row,
+        bon_commande_ref: row.bonCommande?.numero_bc || '',
+        bon_reception_ref: '',
+        fournisseur_nom: row.fournisseur?.raison_sociale || '',
+        fournisseur_nif: row.fournisseur?.nif || '',
+        chantier_id: row.bonCommande?.chantier_id || '',
+        chantier_nom: row.bonCommande?.chantier?.nom_projet || '',
+        montant_ht_dzd: Number(row.total_ht || 0),
+        montant_tva_dzd: Number(row.total_tva || 0),
+        montant_ttc_dzd: Number(row.total_ttc || 0),
+        statut_comptable: row.statut_paiement === 'PAYEE' ? 'PAYEE' : row.statut_paiement === 'PARTIELLE' ? 'BON_A_PAYER' : 'EN_ATTENTE_CONTROLE',
+      })) as unknown as FactureFournisseur[]);
+
+      if (notificationRows) setNotifications(notificationRows.map((row: any) => ({
+        ...row,
+        lu: Boolean(row.est_lue),
+        date_lecture: row.date_lecture || undefined,
+        lien_action: row.lien || undefined,
+      })) as unknown as Notification[]);
+
+      if (pointageRows) setPointages(pointageRows.map((row: any) => ({
+        ...row,
+        employe_nom: [row.employe?.prenom, row.employe?.nom].filter(Boolean).join(' '),
+        employe_matricule: row.employe?.matricule || '',
+        employe_categorie: row.employe?.fonction || 'OUVRIER',
+        statut: row.statut_pointage,
+        heures_travaillees: Number(row.heures_normales || 0) + Number(row.heures_sup || 0),
+        saisi_par_id: row.valide_par || '',
+        saisi_par_nom: '',
+        verrouille: false,
+        updated_at: row.created_at,
+      })) as unknown as PointageLigne[]);
+
+      if (leaveRows) setCongesAbsences(leaveRows.map((row: any) => ({
+        ...row,
+        employe_nom: [row.employe?.prenom, row.employe?.nom].filter(Boolean).join(' '),
+        employe_matricule: row.employe?.matricule || '',
+        chantier_id: row.employe?.chantier_actuel_id || '',
+        nombre_jours: row.jours_ouvrables,
+        motif: row.motif || '',
+        statut: row.statut === 'ACCEPTE' ? 'VALIDE' : row.statut === 'REFUSE' ? 'REFUSE' : 'EN_ATTENTE',
+      })) as unknown as CongeAbsence[]);
+
+      if (auditRows) setAuditLogs(auditRows.map((row: any) => ({
+        ...row,
+        utilisateur_nom: [row.utilisateur?.prenom, row.utilisateur?.nom].filter(Boolean).join(' '),
+        utilisateur_email: row.utilisateur?.email || '',
+        chantier_nom: row.chantier?.nom_projet || '',
+        entite_cible: row.table_nom,
+        entite_id: row.enregistrement_id || '',
+        adresse_ip: row.adresse_ip || '',
+        details_modifications: {
+          avant: row.donnees_anciennes || undefined,
+          apres: row.donnees_nouvelles || undefined,
+        },
+      })) as unknown as AuditLog[]);
+
+      if (userRows) setUtilisateurs(userRows);
+      if (rbac) {
+        setRoles(rbac.roles || []);
+        setPermissions(rbac.permissions || []);
+        setRolePermissions(rbac.rolePermissions || []);
+        authService.updateAuthorizationData(
+          rbac.roles || [],
+          rbac.permissions || [],
+          rbac.rolePermissions || [],
+          userRows || undefined
+        );
+      }
+    } catch (error) {
+      console.error('[BatiProm] Chargement des données PostgreSQL impossible :', error);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const restoreSession = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!active || !data.user) return;
+        setCurrentUser(data.user);
+        authService.restoreAuthenticatedSession(
+          data.user,
+          data.roles || [],
+          data.permissions || [],
+          data.rolePermissions || []
+        );
+        setUtilisateurs((previous) => previous.some((item) => item.id === data.user.id)
+          ? previous.map((item) => item.id === data.user.id ? data.user : item)
+          : [...previous, data.user]);
+        setRoles(data.roles || []);
+        setPermissions(data.permissions || []);
+        setRolePermissions(data.rolePermissions || []);
+        await loadApplicationData();
+      } catch (error) {
+        console.error('[BatiProm] Restauration de session Supabase impossible :', error);
+      }
+    };
+    void restoreSession();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (isRtl) {
@@ -550,12 +795,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       entite_cible,
       entite_id,
       description,
-      adresse_ip: '197.200.12.94',
+      adresse_ip: '',
       user_agent: navigator.userAgent,
       details_modifications: details
     };
 
     setAuditLogs(prev => [newLog, ...prev]);
+
+    if (currentUser) {
+      void fetch('/api/audit-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chantier_id: targetChantierId,
+          module,
+          action,
+          table_nom: entite_cible,
+          enregistrement_id: entite_id,
+          description,
+          donnees_anciennes: details?.avant,
+          donnees_nouvelles: details?.apres,
+        }),
+      }).then(async response => {
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          console.warn('[BatiProm] Journal d’audit non persisté :', result.error || response.status);
+        }
+      }).catch(error => console.warn('[BatiProm] API audit indisponible :', error));
+    }
   };
 
   // ==========================================
@@ -640,6 +907,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const res = await authService.login(email, password, deviceInfo);
     if (res.success && res.user) {
       setCurrentUser(res.user);
+      setUtilisateurs(authService.getAllUsers());
+      setRoles(authService.getAllRoles());
+      setPermissions(authService.getAllPermissions());
+      setRolePermissions(authService.getRolePermissions());
+      await loadApplicationData();
       if (res.user.type === 'CHANTIER') {
         setSelectedChantierId(res.user.chantiers_assignes[0] || 'ALL');
         if (res.user.role_id === 'role-ct') {
@@ -677,6 +949,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const switchUserPersona = (user: Utilisateur) => {
+    // L'impersonation UI est réservée au développement ; en production,
+    // toute identité doit provenir d'une session Supabase Auth réelle.
+    if (process.env.NODE_ENV === 'production') return;
     authService.setAuthenticatedUser(user);
     setCurrentUser(user);
     setSecurityViolation(null);
@@ -2719,252 +2994,233 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // MODULE MATÉRIEL ET PARC AUTOMOBILE
   // ==========================================
 
-  const ajouterVehicule = (data: Omit<Vehicule, 'id' | 'created_at'>): Vehicule => {
-    const newVeh: Vehicule = {
-      ...data,
-      id: `veh-${Date.now()}`,
-      created_at: new Date().toISOString()
-    };
-    setVehicules(prev => [...prev, newVeh]);
-    logOperation('CREATION', 'MATERIEL', 'vehicules', newVeh.id, `Ajout véhicule/engin : ${newVeh.marque} ${newVeh.modele} (${newVeh.num_interne})`);
-    return newVeh;
-  };
-
-  const modifierVehicule = (id: string, updates: Partial<Vehicule>): Vehicule | null => {
-    let updatedVeh: Vehicule | null = null;
-    setVehicules(prev => prev.map(v => {
-      if (v.id === id) {
-        updatedVeh = { ...v, ...updates };
-        return updatedVeh;
-      }
-      return v;
-    }));
-    if (updatedVeh) {
-      logOperation('MODIFICATION', 'MATERIEL', 'vehicules', id, `Mise à jour véhicule/engin ${(updatedVeh as Vehicule).num_interne}`);
+  const persistMaterialMutation = async (
+    url: string,
+    method: 'POST' | 'PATCH' | 'DELETE',
+    body?: unknown
+  ) => {
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Opération matériel refusée.');
+      await loadApplicationData();
+      return result;
+    } catch (error) {
+      console.error('[BatiProm] Opération matériel non persistée :', error);
+      if (typeof window !== 'undefined') window.alert(error instanceof Error ? error.message : 'Opération matériel impossible.');
+      return null;
     }
-    return updatedVeh;
   };
 
-  const supprimerVehicule = (id: string): boolean => {
-    const v = vehicules.find(item => item.id === id);
-    if (!v) return false;
-    setVehicules(prev => prev.filter(item => item.id !== id));
-    logOperation('SUPPRESSION', 'MATERIEL', 'vehicules', id, `Suppression matériel ${v.num_interne} (${v.marque} ${v.modele})`);
+  const ajouterVehicule = async (data: Omit<Vehicule, 'id' | 'created_at'>): Promise<Vehicule | null> => {
+    const created = await persistMaterialMutation('/api/materiel/parc', 'POST', data);
+    if (!created) return null;
+    logOperation('CREATION', 'MATERIEL', 'materiel_engins', created.id, `Ajout véhicule/engin : ${created.marque} ${created.modele} (${created.code_parc})`);
+    return created as Vehicule;
+  };
+
+  const modifierVehicule = async (id: string, updates: Partial<Vehicule>): Promise<Vehicule | null> => {
+    const updated = await persistMaterialMutation('/api/materiel/parc', 'PATCH', { id, ...updates });
+    if (!updated) return null;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_engins', id, `Mise à jour véhicule/engin ${updated.code_parc}`);
+    return updated as Vehicule;
+  };
+
+  const supprimerVehicule = async (id: string): Promise<boolean> => {
+    const vehicle = vehicules.find(item => item.id === id);
+    const result = await persistMaterialMutation(`/api/materiel/parc?id=${encodeURIComponent(id)}`, 'DELETE');
+    if (!result) return false;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_engins', id, `Désactivation matériel ${vehicle?.num_interne || id}`);
     return true;
   };
 
-  const affecterVehiculeChantier = (
-    vehiculeId: string, 
-    chantierId: string, 
-    chantierNom: string, 
-    conducteurNom: string, 
-    motif?: string, 
+  const affecterVehiculeChantier = async (
+    vehiculeId: string,
+    chantierId: string,
+    chantierNom: string,
+    conducteurNom: string,
+    motif?: string,
     bonTransfertRef?: string
-  ): Vehicule | null => {
-    const v = vehicules.find(item => item.id === vehiculeId);
-    if (!v) return null;
-
-    const nouvelleAffectation = {
+  ): Promise<Vehicule | null> => {
+    const vehicle = vehicules.find(item => item.id === vehiculeId);
+    if (!vehicle) return null;
+    const date = new Date().toISOString().split('T')[0];
+    const history = (vehicle.historique_affectations || []).map(item =>
+      !item.date_fin ? { ...item, date_fin: date } : item
+    );
+    const newAssignment = {
       id: `aff-${Date.now()}`,
       chantier_id: chantierId,
       chantier_nom: chantierNom,
       conducteur_nom: conducteurNom,
-      date_debut: new Date().toISOString().split('T')[0],
+      date_debut: date,
       motif: motif || 'Nouvelle affectation opérationnelle',
-      bon_transfert_ref: bonTransfertRef || `BT-${Date.now().toString().slice(-4)}`
+      bon_transfert_ref: bonTransfertRef || `BT-${Date.now().toString().slice(-4)}`,
     };
-
-    // Clôturer l'ancienne affectation si existante
-    const historique = (v.historique_affectations || []).map(aff => {
-      if (!aff.date_fin) {
-        return { ...aff, date_fin: new Date().toISOString().split('T')[0] };
-      }
-      return aff;
-    });
-
-    const updated: Vehicule = {
-      ...v,
+    const updated = await persistMaterialMutation('/api/materiel/parc', 'PATCH', {
+      id: vehiculeId,
       chantier_id: chantierId,
       conducteur_nom: conducteurNom,
+      historique_affectations: [newAssignment, ...history],
       statut: 'ACTIF',
-      historique_affectations: [nouvelleAffectation, ...historique]
-    };
-
-    setVehicules(prev => prev.map(item => item.id === vehiculeId ? updated : item));
-
-    // Notification systématique : Direction Générale pour validation, Parc Matériel pour information
-    const vehiculeNom = `${v.marque} ${v.modele}`;
-    notifierDemandeChantier({
-      titre: `Mouvement de matériel : ${v.num_interne} - ${vehiculeNom}`,
-      message: `Affectation et transfert de l'engin ${v.num_interne} (${vehiculeNom}) vers le chantier "${chantierNom}". Conducteur désigné : ${conducteurNom}. Motif : ${motif || 'Nécessité de chantier'}.`,
-      module: 'MATERIEL',
-      chantierId: chantierId,
-      chantierNom: chantierNom,
-      entiteType: 'MATERIEL',
-      entiteId: v.id,
-      lienAction: '/materiel',
-      servicesCentraux: [
-        { id: 'user-materiel', role: 'RESPONSABLE_MATERIEL', nom: 'Samir Taleb (Gestion du Parc Matériel)' }
-      ]
     });
-
-    logOperation('TRANSFERT_MATERIEL', 'MATERIEL', 'vehicules', vehiculeId, `Déplacement du matériel ${v.num_interne} vers chantier ${chantierNom} (Chauffeur: ${conducteurNom})`);
-    return updated;
+    if (!updated) return null;
+    logOperation('TRANSFERT_MATERIEL', 'MATERIEL', 'materiel_engins', vehiculeId, `Transfert ${vehicle.num_interne} vers ${chantierNom} (Conducteur : ${conducteurNom})`, chantierId);
+    return updated as Vehicule;
   };
 
-  const mettreAJourCompteur = (
-    vehiculeId: string, 
-    nouveauKm?: number, 
+  const mettreAJourCompteur = async (
+    vehiculeId: string,
+    nouveauKm?: number,
     nouvellesHeures?: number
-  ): Vehicule | null => {
-    let updatedVeh: Vehicule | null = null;
-    setVehicules(prev => prev.map(v => {
-      if (v.id === vehiculeId) {
-        updatedVeh = {
-          ...v,
-          kilometrage: nouveauKm !== undefined ? nouveauKm : v.kilometrage,
-          heures_fonctionnement: nouvellesHeures !== undefined ? nouvellesHeures : v.heures_fonctionnement
-        };
-        return updatedVeh;
-      }
-      return v;
-    }));
-    if (updatedVeh) {
-      logOperation('MODIFICATION', 'MATERIEL', 'vehicules', vehiculeId, `Relevé compteur pour ${(updatedVeh as Vehicule).num_interne} : Km=${nouveauKm ?? 'N/A'}, Heures=${nouvellesHeures ?? 'N/A'}`);
-    }
-    return updatedVeh;
+  ): Promise<Vehicule | null> => {
+    const vehicle = vehicules.find(item => item.id === vehiculeId);
+    if (!vehicle) return null;
+    const updated = await persistMaterialMutation('/api/materiel/parc', 'PATCH', {
+      id: vehiculeId,
+      kilometrage: nouveauKm !== undefined ? nouveauKm : vehicle.kilometrage,
+      heures_fonctionnement: nouvellesHeures !== undefined ? nouvellesHeures : vehicle.heures_fonctionnement,
+    });
+    if (!updated) return null;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_engins', vehiculeId, `Relevé compteur ${vehicle.num_interne} : Km=${nouveauKm ?? 'N/A'}, Heures=${nouvellesHeures ?? 'N/A'}`);
+    return updated as Vehicule;
   };
 
-  const enregistrerEntretien = (data: Omit<Entretien, 'id' | 'created_at'>): Entretien => {
-    const newEnt: Entretien = {
-      ...data,
-      id: `ent-${Date.now()}`,
-      created_at: new Date().toISOString()
-    };
-    setEntretiens(prev => [newEnt, ...prev]);
-
-    // Si c'est une vidange ou contrôle, recalculer les prochaines échéances sur le véhicule
-    setVehicules(prev => prev.map(v => {
-      if (v.id === data.vehicule_id) {
-        const maj: Partial<Vehicule> = {};
-        if (data.type === 'VIDANGE') {
-          maj.vidange_derniere_date = data.date;
-          maj.vidange_dernier_km = data.kilometrage_entretien;
-          maj.vidange_dernieres_heures = data.heures_entretien;
-          // Prochaine date + 6 mois
-          const nextDate = new Date(data.date);
-          nextDate.setMonth(nextDate.getMonth() + 6);
-          maj.date_prochaine_vidange = nextDate.toISOString().split('T')[0];
-          if (v.vidange_intervalle_km) {
-            maj.km_prochaine_vidange = data.kilometrage_entretien + v.vidange_intervalle_km;
-          }
-          if (v.vidange_intervalle_heures) {
-            maj.heures_prochaine_vidange = data.heures_entretien + v.vidange_intervalle_heures;
-          }
-        } else if (data.type === 'CONTROLE_TECHNIQUE') {
-          maj.ct_date_dernier = data.date;
-          const nextCT = new Date(data.date);
-          nextCT.setFullYear(nextCT.getFullYear() + 1);
-          maj.date_prochain_controle_technique = nextCT.toISOString().split('T')[0];
-          maj.ct_statut = 'VALIDE';
-        } else if (data.type === 'REPARATION' || data.type === 'PANNE') {
-          maj.statut = data.statut_operation === 'EFFECTUE' ? 'ACTIF' : 'EN_REPARATION';
-        }
-        return { ...v, ...maj };
-      }
-      return v;
-    }));
-
-    logOperation('CREATION', 'MATERIEL', 'entretiens', newEnt.id, `Entretien ${data.type} pour véhicule ${data.vehicule_nom || data.vehicule_id} (Coût: ${data.cout} DZD)`);
-    return newEnt;
+  const enregistrerEntretien = async (data: Omit<Entretien, 'id' | 'created_at'>): Promise<Entretien | null> => {
+    const created = await persistMaterialMutation('/api/materiel/entretiens', 'POST', {
+      vehicule_id: data.vehicule_id,
+      type: data.type,
+      gravite: data.gravite || 'FAIBLE',
+      statut_operation: data.statut_operation || 'EFFECTUE',
+      description: data.description,
+      date: data.date,
+      kilometrage_entretien: data.kilometrage_entretien || 0,
+      heures_entretien: data.heures_entretien || 0,
+      cout: data.cout || 0,
+      garage_nom: data.garage_nom || null,
+      piece_rechange_utilisee: data.piece_rechange_utilisee || null,
+      facture_ref: data.facture_ref || null,
+    });
+    if (!created) return null;
+    logOperation('CREATION', 'MATERIEL', 'materiel_entretiens', created.id, `Entretien ${data.type} pour ${data.vehicule_nom || data.vehicule_id} (Coût : ${data.cout || 0} DZD)`);
+    return created as Entretien;
   };
 
-  const declarerPanne = (
-    vehiculeId: string, 
-    description: string, 
+  const declarerPanne = async (
+    vehiculeId: string,
+    description: string,
     gravite: 'FAIBLE' | 'MOYENNE' | 'CRITIQUE' | 'IMMOBILISATION' = 'CRITIQUE',
     garageNom?: string,
     coutEstime?: number
-  ): Entretien => {
-    const veh = vehicules.find(v => v.id === vehiculeId);
-    const newEnt: Entretien = {
-      id: `ent-${Date.now()}`,
+  ): Promise<Entretien | null> => {
+    const vehicle = vehicules.find(item => item.id === vehiculeId);
+    const created = await persistMaterialMutation('/api/materiel/entretiens', 'POST', {
       vehicule_id: vehiculeId,
-      vehicule_nom: veh ? `${veh.marque} ${veh.modele}` : 'Véhicule',
       type: 'PANNE',
-      nature: 'CURATIF',
       gravite,
       statut_operation: 'EN_COURS',
       description,
-      date: new Date().toISOString().split('T')[0],
-      kilometrage_entretien: veh?.kilometrage || 0,
-      heures_entretien: veh?.heures_fonctionnement || 0,
+      date: new Date().toISOString().slice(0, 10),
+      kilometrage_entretien: vehicle?.kilometrage || 0,
+      heures_entretien: vehicle?.heures_fonctionnement || 0,
       cout: coutEstime || 0,
-      prestataire: garageNom ? 'GARAGE_EXTERNE' : 'ATELIER_INTERNE',
-      garage_nom: garageNom,
-      created_at: new Date().toISOString()
-    };
-
-    setEntretiens(prev => [newEnt, ...prev]);
-
-    // Passer le véhicule en panne
-    setVehicules(prev => prev.map(v => {
-      if (v.id === vehiculeId) {
-        return { ...v, statut: 'EN_PANNE' };
-      }
-      return v;
-    }));
-
-    logOperation('CREATION', 'MATERIEL', 'entretiens', newEnt.id, `Déclaration de panne ${gravite} sur ${veh?.num_interne} : ${description}`);
-    return newEnt;
+      garage_nom: garageNom || null,
+    });
+    if (!created) return null;
+    logOperation('CREATION', 'MATERIEL', 'materiel_entretiens', created.id, `Déclaration de panne ${gravite} sur ${vehicle?.num_interne || vehiculeId} : ${description}`);
+    return created as Entretien;
   };
 
-  const renouvelerAssurance = (
-    vehiculeId: string, 
-    nouvelleCompagnie: string, 
-    nouvellePolice: string, 
-    dateDebut: string, 
-    dateFin: string, 
-    coutDzd: number, 
+  const renouvelerAssurance = async (
+    vehiculeId: string,
+    nouvelleCompagnie: string,
+    nouvellePolice: string,
+    dateDebut: string,
+    dateFin: string,
+    coutDzd: number,
     quittanceRef?: string
-  ): Vehicule | null => {
-    let updatedVeh: Vehicule | null = null;
-    const v = vehicules.find(item => item.id === vehiculeId);
-    if (!v) return null;
-
-    updatedVeh = {
-      ...v,
+  ): Promise<Vehicule | null> => {
+    const vehicle = vehicules.find(item => item.id === vehiculeId);
+    if (!vehicle) return null;
+    const updated = await persistMaterialMutation('/api/materiel/parc', 'PATCH', {
+      id: vehiculeId,
       assurance_compagnie: nouvelleCompagnie,
       assurance_police: nouvellePolice,
-      assurance_date_debut: dateDebut,
       date_fin_assurance: dateFin,
-      assurance_cout_dzd: coutDzd
-    };
-
-    setVehicules(prev => prev.map(item => item.id === vehiculeId ? (updatedVeh as Vehicule) : item));
-
-    // Enregistrer automatiquement l'opération dans le journal des entretiens & dépenses
-    const newEnt: Entretien = {
-      id: `ent-ass-${Date.now()}`,
+      assurance_cout_dzd: coutDzd,
+    });
+    if (!updated) return null;
+    await persistMaterialMutation('/api/materiel/entretiens', 'POST', {
       vehicule_id: vehiculeId,
-      vehicule_nom: `${v.marque} ${v.modele}`,
       type: 'ASSURANCE',
-      nature: 'PREVENTIF',
       gravite: 'FAIBLE',
       statut_operation: 'EFFECTUE',
-      description: `Renouvellement police d'assurance ${nouvelleCompagnie} (N° ${nouvellePolice}). Validité du ${dateDebut} au ${dateFin}.`,
+      description: `Renouvellement police ${nouvelleCompagnie} (N° ${nouvellePolice}) valable du ${dateDebut} au ${dateFin}.`,
       date: dateDebut,
-      kilometrage_entretien: v.kilometrage || 0,
-      heures_entretien: v.heures_fonctionnement || 0,
+      kilometrage_entretien: vehicle.kilometrage || 0,
+      heures_entretien: vehicle.heures_fonctionnement || 0,
       cout: coutDzd,
-      facture_ref: quittanceRef || `QUIT-ASS-${Date.now().toString().slice(-4)}`,
       garage_nom: nouvelleCompagnie,
-      created_at: new Date().toISOString()
-    };
-    setEntretiens(prev => [newEnt, ...prev]);
+      facture_ref: quittanceRef || null,
+    });
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_engins', vehiculeId, `Renouvellement assurance ${vehicle.num_interne} : ${nouvelleCompagnie}, échéance ${dateFin}, prime ${coutDzd} DZD`);
+    return updated as Vehicule;
+  };
 
-    logOperation('MODIFICATION', 'MATERIEL', 'vehicules', vehiculeId, `Renouvellement assurance pour ${v.num_interne} : ${nouvelleCompagnie} (${nouvellePolice}), Échéance: ${dateFin}, Prime: ${coutDzd} DZD`);
-    return updatedVeh;
+  const permuterPneus = async (
+    vehiculeId: string,
+    pieceId1: string,
+    pieceId2: string,
+    km: number,
+    motif: string,
+    operateur: string
+  ): Promise<boolean> => {
+    const result = await persistMaterialMutation('/api/materiel/pieces/permutation', 'POST', {
+      piece1_id: pieceId1,
+      piece2_id: pieceId2,
+      kilometrage: km,
+      motif,
+      operateur,
+    });
+    if (!result) return false;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_pieces_remplacables', pieceId1, `Permutation croisée de pneus sur véhicule ${vehiculeId}`);
+    return true;
+  };
+
+  const remplacerPieceRemplacable = async (
+    pieceId: string,
+    nouvellePiece: Omit<PieceRemplacable, 'id' | 'created_at'>,
+    motif: string,
+    note?: string
+  ): Promise<PieceRemplacable | null> => {
+    const created = await persistMaterialMutation('/api/materiel/pieces/remplacement', 'POST', {
+      ancienne_piece_id: pieceId,
+      nouvelle_piece: {
+        materiel_id: nouvellePiece.vehicule_id,
+        type: nouvellePiece.type,
+        designation: nouvellePiece.designation,
+        marque: nouvellePiece.marque,
+        dimensions: nouvellePiece.dimensions,
+        numero_serie: nouvellePiece.numero_serie,
+        position: nouvellePiece.position,
+        date_installation: nouvellePiece.date_installation,
+        kilometrage_installation: nouvellePiece.kilometrage_installation,
+        heures_installation: nouvellePiece.heures_installation,
+        etat: nouvellePiece.etat,
+        profondeur_sculpture_mm: nouvellePiece.profondeur_sculpture_mm,
+        cout_achat_dzd: nouvellePiece.cout_achat_dzd,
+        fournisseur: nouvellePiece.fournisseur,
+      },
+      motif,
+      note,
+    });
+    if (!created) return null;
+    logOperation('MODIFICATION', 'MATERIEL', 'materiel_pieces_remplacables', pieceId, `Remplacement de pièce : ${motif}`);
+    return created as PieceRemplacable;
   };
 
   const gererPieceRemplacable = (data: Omit<PieceRemplacable, 'id' | 'created_at'>): PieceRemplacable => {
@@ -2976,102 +3232,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPiecesRemplacables(prev => [newPce, ...prev]);
     logOperation('CREATION', 'MATERIEL', 'pieces_remplacables', newPce.id, `Suivi composant ${data.type} (${data.designation}) pour véhicule ${data.vehicule_id}`);
     return newPce;
-  };
-
-  const permuterPneus = (
-    vehiculeId: string, 
-    pieceId1: string, 
-    pieceId2: string, 
-    km: number, 
-    motif: string, 
-    operateur: string
-  ): boolean => {
-    const p1 = piecesRemplacables.find(p => p.id === pieceId1);
-    const p2 = piecesRemplacables.find(p => p.id === pieceId2);
-    if (!p1 || !p2) return false;
-
-    const pos1 = p1.position;
-    const pos2 = p2.position;
-    const dateNow = new Date().toISOString().split('T')[0];
-
-    const hist1: HistoriquePermutationPneu = {
-      id: `perm-${Date.now()}-1`,
-      date: dateNow,
-      ancienne_position: pos1,
-      nouvelle_position: pos2,
-      kilometrage: km,
-      motif,
-      operateur
-    };
-
-    const hist2: HistoriquePermutationPneu = {
-      id: `perm-${Date.now()}-2`,
-      date: dateNow,
-      ancienne_position: pos2,
-      nouvelle_position: pos1,
-      kilometrage: km,
-      motif,
-      operateur
-    };
-
-    setPiecesRemplacables(prev => prev.map(p => {
-      if (p.id === pieceId1) {
-        return {
-          ...p,
-          position: pos2,
-          historique_permutations: [hist1, ...(p.historique_permutations || [])]
-        };
-      }
-      if (p.id === pieceId2) {
-        return {
-          ...p,
-          position: pos1,
-          historique_permutations: [hist2, ...(p.historique_permutations || [])]
-        };
-      }
-      return p;
-    }));
-
-    logOperation('MODIFICATION', 'MATERIEL', 'pieces_remplacables', pieceId1, `Permutation croisée de pneus entre position ${pos1} et ${pos2} sur véhicule ${vehiculeId}`);
-    return true;
-  };
-
-  const remplacerPieceRemplacable = (
-    pieceId: string, 
-    nouvellePiece: Omit<PieceRemplacable, 'id' | 'created_at'>, 
-    motif: string, 
-    note?: string
-  ): PieceRemplacable | null => {
-    const ancienne = piecesRemplacables.find(p => p.id === pieceId);
-    if (!ancienne) return null;
-
-    const dateNow = new Date().toISOString().split('T')[0];
-
-    // Marquer l'ancienne pièce comme REMPLACE
-    const histRemp: HistoriqueRemplacementPiece = {
-      id: `remp-${Date.now()}`,
-      date: dateNow,
-      ancien_numero_serie: ancienne.numero_serie,
-      kilometrage: nouvellePiece.kilometrage_installation,
-      motif,
-      note,
-      cout_dzd: nouvellePiece.cout_achat_dzd
-    };
-
-    const nouvelle: PieceRemplacable = {
-      ...nouvellePiece,
-      id: `pce-${Date.now()}`,
-      historique_remplacements: [histRemp, ...(ancienne.historique_remplacements || [])],
-      created_at: new Date().toISOString()
-    };
-
-    setPiecesRemplacables(prev => [
-      nouvelle,
-      ...prev.map(p => p.id === pieceId ? { ...p, etat: 'REMPLACE' as const } : p)
-    ]);
-
-    logOperation('MODIFICATION', 'MATERIEL', 'pieces_remplacables', pieceId, `Remplacement du composant ${ancienne.designation} (${ancienne.numero_serie}) par ${nouvelle.numero_serie}. Motif: ${motif}`);
-    return nouvelle;
   };
 
   // Comptabilité & Fiscalité

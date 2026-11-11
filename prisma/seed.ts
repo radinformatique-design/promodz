@@ -4,6 +4,8 @@ import {
   DEMO_COMPTES_BANCAIRES,
   DEMO_PARAMETRES_GENERAUX,
   DEMO_ROLES,
+  DEMO_PERMISSIONS,
+  DEMO_ROLE_PERMISSIONS,
   DEMO_UTILISATEURS,
   DEMO_CHANTIERS,
   DEMO_FOURNISSEURS,
@@ -61,16 +63,44 @@ async function main() {
   // 3. Rôles
   console.log('3. Insertion Rôles...');
   for (const role of DEMO_ROLES) {
-    await prisma.role.upsert({
-      where: { code: role.code },
-      update: {},
+    const existingRole = await prisma.role.findFirst({
+      where: { code: role.code, entreprise_id: null },
+      select: { id: true },
+    });
+
+    if (!existingRole) {
+      await prisma.role.create({
+        data: {
+          id: role.id,
+          entreprise_id: null,
+          code: role.code,
+          libelle: role.libelle,
+          description: role.description,
+          type_acces: (role as any).type_acces || ((role as any).niveau_hierarchique > 2 ? 'CHANTIER' : 'CENTRAL'),
+        },
+      });
+    }
+  }
+
+  // 3 bis. Catalogue des permissions et matrice par rôle (seed de démonstration uniquement)
+  console.log('3 bis. Insertion Permissions & RBAC...');
+  for (const permission of DEMO_PERMISSIONS) {
+    await prisma.permission.upsert({
+      where: { module_action: { module: permission.module, action: permission.action } },
+      update: { description: permission.description },
       create: {
-        id: role.id,
-        code: role.code,
-        libelle: role.libelle,
-        description: role.description,
-        type_acces: (role as any).type_acces || 'CENTRAL',
+        id: permission.id,
+        module: permission.module,
+        action: permission.action,
+        description: permission.description,
       },
+    });
+  }
+  for (const item of DEMO_ROLE_PERMISSIONS) {
+    await prisma.rolePermission.upsert({
+      where: { role_id_permission_id: { role_id: item.role_id, permission_id: item.permission_id } },
+      update: {},
+      create: { role_id: item.role_id, permission_id: item.permission_id },
     });
   }
 
@@ -162,6 +192,7 @@ async function main() {
       update: {},
       create: {
         id: f.id,
+        entreprise_id: entreprise.id,
         code_fournisseur: code,
         raison_sociale: f.nom_fournisseur,
         categorie: f.categorie,
@@ -234,6 +265,7 @@ async function main() {
       update: {},
       create: {
         id: veh.id,
+        entreprise_id: entreprise.id,
         code_parc: code,
         type_engin: veh.categorie || 'VEHICULE_LEGER',
         marque: veh.marque,

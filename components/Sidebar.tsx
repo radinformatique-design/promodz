@@ -23,7 +23,8 @@ import {
   Lock,
   LogOut,
   Store,
-  Clock
+  Clock,
+  Wallet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ModuleCode } from '../types/database';
@@ -75,6 +76,7 @@ export const Sidebar: React.FC = () => {
     { id: 'rh', module: 'RH', label: 'Ressources humaines', icon: Users },
     { id: 'commercial', module: 'COMMERCIAL', label: 'Commercial', icon: Building2 },
     { id: 'comptabilite', module: 'COMPTABILITE', label: 'Comptabilité et fiscalité', icon: ReceiptText },
+    { id: 'caisse', module: 'CAISSE', label: 'Caisse chantier', icon: Wallet },
     { id: 'juridique', module: 'JURIDIQUE', label: 'Juridique', icon: Scale },
     { id: 'administration', module: 'ADMINISTRATION', label: 'Administration', icon: ShieldCheck },
     { id: 'notifications', module: 'NOTIFICATIONS', label: 'Notifications', icon: Bell, badge: unreadNotificationsCount },

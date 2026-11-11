@@ -7,21 +7,18 @@ import {
   Mail,
   Shield,
   ArrowRight,
-  HardHat,
-  Building,
   KeyRound,
   CheckCircle2,
   AlertCircle,
   X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Utilisateur } from '../types/database';
 
 export const LoginView: React.FC = () => {
-  const { login, utilisateurs, roles, resetUserPassword } = useApp();
+  const { login } = useApp();
 
-  const [email, setEmail] = useState('admin@batiprom-dz.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -47,26 +44,22 @@ export const LoginView: React.FC = () => {
     }
   };
 
-  const handleQuickSelectUser = (user: Utilisateur) => {
-    setEmail(user.email);
-    setPassword('password123');
-    setErrorMessage(null);
-  };
-
-  const handleResetPasswordSubmit = (e: React.FormEvent) => {
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetEmail) return;
-
-    const res = resetUserPassword(resetEmail);
-    if (res.success) {
-      setResetSuccessMessage(`${res.message} Nouveau mot de passe temporaire : ${res.tempPassword}`);
-    } else {
-      setErrorMessage(res.message);
+    if (!resetEmail.trim()) return;
+    setErrorMessage(null);
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      if (error) throw error;
+      setResetSuccessMessage('Si cette adresse correspond à un compte, un lien sécurisé de réinitialisation vient d’être envoyé.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Impossible d’envoyer le lien de réinitialisation.');
     }
   };
-
-  const centralUsers = utilisateurs.filter(u => u.type === 'CENTRAL');
-  const siteUsers = utilisateurs.filter(u => u.type === 'CHANTIER');
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -166,98 +159,32 @@ export const LoginView: React.FC = () => {
             </button>
           </form>
 
-          <div className="mt-5 pt-4 border-t border-slate-800 text-[11px] text-slate-400">
-            <span className="block font-semibold text-slate-300 mb-1">Mot de passe de démonstration :</span>
-            Tous les comptes sont configurés avec <code className="text-emerald-400 bg-slate-950 px-1 py-0.5 rounded font-mono">password123</code>.
-          </div>
         </div>
 
-        {/* Right Column: Fast Persona Tester (7 cols) */}
         <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xs space-y-5">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-1">
-              <Shield className="w-4 h-4" />
-              <span>Tester les 11 Profils Réglementaires</span>
-            </div>
-            <h3 className="text-base font-bold text-white">
-              Sélecteur d'Accès Rapide (Centraux vs Chantiers)
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Cliquez sur un profil pour pré-remplir les identifiants et tester les règles d'étanchéité et de restrictions imposées.
-            </p>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+            <Shield className="w-4 h-4" />
+            <span>Authentification sécurisée</span>
           </div>
-
-          {/* Group A: Central Users */}
-          <div>
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-blue-400 uppercase tracking-wider mb-2">
-              <Building className="w-3.5 h-3.5" />
-              <span>A. Utilisateurs Centraux (Siège) — {centralUsers.length} profils</span>
+          <h3 className="text-base font-bold text-white">Connexion BatiProm</h3>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Les comptes et mots de passe sont gérés par Supabase Auth. Saisissez l’adresse e-mail et le mot de passe qui vous ont été communiqués par l’administrateur de votre entreprise.
+          </p>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3 text-xs text-slate-300">
+            <div className="flex items-start gap-3">
+              <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Chaque collaborateur utilise son propre compte professionnel.</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {centralUsers.map((u) => {
-                const role = roles.find(r => r.id === u.role_id);
-                const isSelected = email.toLowerCase() === u.email.toLowerCase();
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => handleQuickSelectUser(u)}
-                    className={`p-2.5 rounded-xl border text-left transition-all flex items-start gap-2.5 ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-950/40 text-white'
-                        : 'border-slate-800 bg-slate-950/50 hover:border-slate-700 text-slate-300'
-                    }`}
-                  >
-                    <div className="w-6 h-6 rounded-full bg-blue-900/40 border border-blue-500/30 flex items-center justify-center text-[10px] font-bold text-blue-300 shrink-0 mt-0.5">
-                      {u.prenom[0]}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold truncate text-[11px]">
-                        {u.prenom} {u.nom}
-                      </div>
-                      <div className="text-[10px] text-blue-300/80 truncate">
-                        {role?.libelle}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="flex items-start gap-3">
+              <Lock className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Les mots de passe ne sont ni stockés dans BatiProm ni partagés entre utilisateurs.</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Les accès aux chantiers et aux modules dépendent du profil attribué par le siège.</span>
             </div>
           </div>
-
-          {/* Group B: Site Users */}
-          <div>
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-400 uppercase tracking-wider mb-2">
-              <HardHat className="w-3.5 h-3.5" />
-              <span>B. Utilisateurs des Chantiers — {siteUsers.length} profils</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-              {siteUsers.map((u) => {
-                const role = roles.find(r => r.id === u.role_id);
-                const isSelected = email.toLowerCase() === u.email.toLowerCase();
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => handleQuickSelectUser(u)}
-                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-950/40 text-white'
-                        : 'border-slate-800 bg-slate-950/50 hover:border-slate-700 text-slate-300'
-                    }`}
-                  >
-                    <div className="font-semibold truncate text-[11px]">
-                      {u.prenom} {u.nom}
-                    </div>
-                    <div className="text-[10px] text-amber-400/90 font-medium mt-1">
-                      {role?.libelle}
-                    </div>
-                    <div className="text-[9px] text-slate-400 truncate mt-0.5">
-                      {u.chantiers_assignes[0] === 'cht-001' ? 'Chéraga' : u.chantiers_assignes[0] === 'cht-002' ? 'Oran' : 'Constantine'}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <p className="text-[11px] text-slate-500">En cas de difficulté, contactez l’administrateur de votre entreprise ou utilisez « Mot de passe oublié ? ».</p>
         </div>
       </div>
 
@@ -268,7 +195,7 @@ export const LoginView: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
               <div className="flex items-center gap-2 font-bold text-white text-sm">
                 <KeyRound className="w-4 h-4 text-emerald-400" />
-                <span>Réinitialisation Sécurisée</span>
+                <span>Réinitialisation par e-mail</span>
               </div>
               <button
                 onClick={() => setIsResetModalOpen(false)}
@@ -295,7 +222,7 @@ export const LoginView: React.FC = () => {
             ) : (
               <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
                 <p className="text-slate-400 leading-relaxed">
-                  Saisissez l'adresse email professionnelle du collaborateur. Un mot de passe temporaire sera généré et consigné dans le journal d'audit.
+                  Saisissez votre adresse e-mail. Supabase vous enverra un lien sécurisé pour choisir un nouveau mot de passe.
                 </p>
 
                 <div>

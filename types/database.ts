@@ -27,7 +27,12 @@ export type PermissionAction =
   | 'SUPPRIMER'
   | 'VALIDER'
   | 'REFUSER'
-  | 'EXPORTER';
+  | 'EXPORTER'
+  | 'SORTIR'
+  | 'DEMANDER'
+  | 'APPROVISIONNER'
+  | 'GERER_PLAFOND'
+  | 'TRAITER_DEMANDE';
 
 export type ModuleCode = 
   | 'DASHBOARD'
@@ -39,11 +44,13 @@ export type ModuleCode =
   | 'MATERIEL'
   | 'COMMERCIAL'
   | 'APPROVISIONNEMENTS'
+  | 'CAISSE'
   | 'MAGASIN'
   | 'CHANTIERS'
   | 'NOTIFICATIONS'
   | 'PARAMETRES'
-  | 'DOCUMENTS';
+  | 'DOCUMENTS'
+  | 'CAISSE';
 
 export type ChantierStatut = 
   | 'ETUDE_FONCIERE'
@@ -237,11 +244,13 @@ export interface PasswordResetRequest {
 
 export interface Role {
   id: string;
+  entreprise_id?: string | null;
   code: UserRole;
   libelle: string;
   description: string;
-  is_system: boolean;
-  niveau_hierarchique: number;
+  is_system?: boolean;
+  niveau_hierarchique?: number;
+  type_acces?: 'CENTRAL' | 'CHANTIER' | 'HYBRIDE';
   created_at: string;
 }
 
@@ -249,7 +258,7 @@ export interface Permission {
   id: string;
   module: ModuleCode;
   action: PermissionAction;
-  code: string; // ex: "CHANTIER:CREATE", "COMPTABILITE:VALIDATE"
+  code?: string; // Champ dérivé éventuel côté interface ; non stocké dans la table Prisma
   description: string;
 }
 

@@ -441,7 +441,8 @@ export const MODULES_LIST: {
   { code: 'ADMINISTRATION', libelle: 'Administration & Sécurité', description: 'Gestion des utilisateurs, matrice des habilitations RBAC, sessions et logs d’audit certifiés', categorie: 'SYSTEME', isCentralOnly: true },
   { code: 'DOCUMENTS', libelle: 'Documents & GED', description: 'Archivage numérique, plans d’architecture, rapports CTC, PV de chantier et contrats scannés', categorie: 'SYSTEME', isCentralOnly: false },
   { code: 'NOTIFICATIONS', libelle: 'Notifications & Alertes', description: 'Centre d’alertes opérationnelles, notifications d’approbation et messages d’information', categorie: 'SYSTEME', isCentralOnly: false },
-  { code: 'PARAMETRES', libelle: 'Paramètres Généraux', description: 'Configuration des heures limites de pointage, seuils financiers et constantes système', categorie: 'SYSTEME', isCentralOnly: true }
+  { code: 'PARAMETRES', libelle: 'Paramètres Généraux', description: 'Configuration des heures limites de pointage, seuils financiers et constantes système', categorie: 'SYSTEME', isCentralOnly: true },
+  { code: 'CAISSE', libelle: 'Caisse de fonds de roulement', description: 'Plafonds de caisse chantier, sorties, approvisionnements et demandes de réapprovisionnement', categorie: 'GESTION', isCentralOnly: false }
 ];
 
 // Génération exhaustive des permissions par module et action

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ShieldCheck,
   Users,
@@ -49,7 +49,8 @@ import {
   Ruler,
   Building2,
   FolderOpen,
-  Sparkles
+  Sparkles,
+  Wallet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserType, AuditAction, ModuleCode, PermissionAction, Utilisateur } from '../types/database';
@@ -70,7 +71,8 @@ const MODULE_ICONS: Record<ModuleCode, any> = {
   ADMINISTRATION: ShieldCheck,
   DOCUMENTS: FolderOpen,
   NOTIFICATIONS: Bell,
-  PARAMETRES: Settings2
+  PARAMETRES: Settings2,
+  CAISSE: Wallet
 };
 
 const ACTION_CONFIG: Record<PermissionAction, { label: string; badge: string; desc: string }> = {
@@ -80,21 +82,20 @@ const ACTION_CONFIG: Record<PermissionAction, { label: string; badge: string; de
   SUPPRIMER: { label: 'Supprimer', badge: 'bg-rose-50 text-rose-700 border-rose-200', desc: 'Archivage ou suppression définitive' },
   VALIDER: { label: 'Valider', badge: 'bg-purple-50 text-purple-700 border-purple-200', desc: 'Approbation formelle et visas hiérarchiques' },
   REFUSER: { label: 'Refuser', badge: 'bg-orange-50 text-orange-700 border-orange-200', desc: 'Rejet motivé ou renvoi pour correction' },
-  EXPORTER: { label: 'Exporter', badge: 'bg-slate-100 text-slate-700 border-slate-300', desc: 'Export PDF / Excel et génération d’états' }
+  EXPORTER: { label: 'Exporter', badge: 'bg-slate-100 text-slate-700 border-slate-300', desc: 'Export PDF / Excel et génération d’états' },
+  SORTIR: { label: 'Sortir', badge: 'bg-rose-50 text-rose-700 border-rose-200', desc: 'Enregistrer une dépense de la caisse chantier' },
+  DEMANDER: { label: 'Demander', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200', desc: 'Demander un réapprovisionnement au siège' },
+  APPROVISIONNER: { label: 'Approvisionner', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', desc: 'Enregistrer un versement dans la caisse chantier' },
+  GERER_PLAFOND: { label: 'Gérer plafond', badge: 'bg-amber-50 text-amber-700 border-amber-200', desc: 'Définir le plafond autorisé de la caisse' },
+  TRAITER_DEMANDE: { label: 'Traiter demande', badge: 'bg-purple-50 text-purple-700 border-purple-200', desc: 'Approuver ou refuser un réapprovisionnement' }
 };
 
 export const AdministrationView: React.FC = () => {
   const {
     utilisateurs,
-    addUtilisateur,
-    updateUtilisateur,
-    deleteUtilisateur,
-    resetUserPassword,
     roles,
     permissions,
     rolePermissions,
-    updateRolePermission,
-    saveRbacMatrix,
     auditLogs,
     allChantiers,
     selectedChantierId,
@@ -127,11 +128,25 @@ export const AdministrationView: React.FC = () => {
   // RBAC Matrix local state for configuration & saving
   const [matrixState, setMatrixState] = useState<typeof rolePermissions>(rolePermissions);
   const [matrixSuccessMsg, setMatrixSuccessMsg] = useState<string | null>(null);
+  const [matrixErrorMsg, setMatrixErrorMsg] = useState<string | null>(null);
   const [matrixCategoryFilter, setMatrixCategoryFilter] = useState<'ALL' | 'CHANTIER' | 'GESTION' | 'SYSTEME'>('ALL');
   const [matrixSearchQuery, setMatrixSearchQuery] = useState('');
   const [matrixRoleCategoryFilter, setMatrixRoleCategoryFilter] = useState<'ALL' | 'CENTRAL' | 'CHANTIER'>('ALL');
   const [matrixRoleFocus, setMatrixRoleFocus] = useState<string>('ALL');
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
+  const [selectedTemplateRoleId, setSelectedTemplateRoleId] = useState('');
+  const [roleActionFeedback, setRoleActionFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMatrixState(rolePermissions);
+  }, [rolePermissions]);
+
+  useEffect(() => {
+    if (!selectedTemplateRoleId) {
+      const firstTemplate = roles.find((role) => !role.entreprise_id && role.code !== 'ADMINISTRATEUR');
+      if (firstTemplate) setSelectedTemplateRoleId(firstTemplate.id);
+    }
+  }, [roles, selectedTemplateRoleId]);
 
   // Backup & Restoration State
   const [backupsList, setBackupsList] = useState<BackupSnapshot[]>(productionSecurityService.getBackups());
@@ -205,6 +220,7 @@ export const AdministrationView: React.FC = () => {
   };
 
   // User form state (Create / Edit)
+  const [userActionError, setUserActionError] = useState<string | null>(null);
   const [userFormData, setUserFormData] = useState({
     nom: '',
     prenom: '',
@@ -212,9 +228,8 @@ export const AdministrationView: React.FC = () => {
     telephone: '+213 ',
     poste: '',
     type: 'CHANTIER' as UserType,
-    role_id: 'role-ct',
-    chantiers_assignes: [] as string[],
-    initialPassword: 'password123'
+    role_id: '',
+    chantiers_assignes: [] as string[]
   });
 
   const handleOpenCreateUser = () => {
@@ -226,9 +241,8 @@ export const AdministrationView: React.FC = () => {
       telephone: '+213 ',
       poste: '',
       type: 'CHANTIER',
-      role_id: 'role-ct',
-      chantiers_assignes: [allChantiers[0]?.id || 'cht-001'],
-      initialPassword: 'password123'
+      role_id: roles.find(r => r.type_acces === 'CHANTIER' || r.type_acces === 'HYBRIDE')?.id || '',
+      chantiers_assignes: allChantiers[0]?.id ? [allChantiers[0].id] : []
     });
     setIsUserModalOpen(true);
   };
@@ -243,45 +257,69 @@ export const AdministrationView: React.FC = () => {
       poste: user.poste,
       type: user.type,
       role_id: user.role_id,
-      chantiers_assignes: user.chantiers_assignes || [],
-      initialPassword: ''
+      chantiers_assignes: user.chantiers_assignes || []
     });
     setIsUserModalOpen(true);
   };
 
-  const handleUserFormSubmit = (e: React.FormEvent) => {
+  const handleUserFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUserActionError(null);
     if (!userFormData.nom || !userFormData.email) return;
 
-    if (editingUser) {
-      updateUtilisateur(editingUser.id, {
-        nom: userFormData.nom,
-        prenom: userFormData.prenom,
-        email: userFormData.email,
-        telephone: userFormData.telephone,
-        poste: userFormData.poste,
-        type: userFormData.type,
-        role_id: userFormData.role_id,
-        chantiers_assignes: userFormData.chantiers_assignes
+    try {
+      const response = await fetch(editingUser ? '/api/admin/users' : '/api/admin/users/invite', {
+        method: editingUser ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingUser
+          ? {
+              id: editingUser.id,
+              nom: userFormData.nom,
+              prenom: userFormData.prenom,
+              telephone: userFormData.telephone,
+              poste: userFormData.poste,
+              type: userFormData.type,
+              role_id: userFormData.role_id,
+              chantiers_assignes: userFormData.chantiers_assignes,
+            }
+          : userFormData),
       });
-    } else {
-      addUtilisateur({
-        ...userFormData
-      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Enregistrement du profil impossible.');
+      setIsUserModalOpen(false);
+      window.location.reload();
+    } catch (error) {
+      setUserActionError(error instanceof Error ? error.message : 'Erreur lors de l’enregistrement.');
     }
-
-    setIsUserModalOpen(false);
   };
 
-  const handleToggleUserStatus = (user: Utilisateur) => {
+  const handleToggleUserStatus = async (user: Utilisateur) => {
     const newStatus = user.statut === 'ACTIF' ? 'DESACTIVE' : 'ACTIF';
-    updateUtilisateur(user.id, { statut: newStatus });
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, statut: newStatus }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Modification du statut impossible.');
+      window.location.reload();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Erreur de modification.');
+    }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteConfirmUser) return;
-    deleteUtilisateur(deleteConfirmUser.id);
-    setDeleteConfirmUser(null);
+    try {
+      const response = await fetch(`/api/admin/users?id=${encodeURIComponent(deleteConfirmUser.id)}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Suppression impossible.');
+      setDeleteConfirmUser(null);
+      window.location.reload();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Erreur de suppression.');
+    }
   };
 
   const handleTriggerResetPassword = (user: Utilisateur) => {
@@ -290,19 +328,79 @@ export const AdministrationView: React.FC = () => {
     setIsResetPasswordModalOpen(true);
   };
 
-  const handleExecuteResetPassword = () => {
+  const handleExecuteResetPassword = async () => {
     if (!targetResetUser) return;
-    const res = resetUserPassword(targetResetUser.email);
-    if (res.success) {
-      setResetFeedback(`Nouveau mot de passe temporaire généré : ${res.tempPassword}`);
-    } else {
-      setResetFeedback(`Erreur : ${res.message}`);
+    setResetFeedback('Envoi du lien de réinitialisation…');
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(targetResetUser.email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      if (error) throw error;
+      setResetFeedback(`Un lien sécurisé a été envoyé à ${targetResetUser.email}.`);
+    } catch (error) {
+      setResetFeedback(`Erreur : ${error instanceof Error ? error.message : 'Envoi du lien impossible.'}`);
     }
   };
 
-  // Matrix toggle helper
+  const isEditableRole = (roleId: string) => {
+    const role = roles.find((item) => item.id === roleId);
+    return Boolean(role?.entreprise_id) && role?.code !== 'ADMINISTRATEUR';
+  };
+
+  const handleCustomizeRole = async () => {
+    if (!selectedTemplateRoleId) return;
+    setRoleActionFeedback(null);
+    try {
+      const response = await fetch('/api/admin/rbac', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateRoleId: selectedTemplateRoleId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Personnalisation du rôle impossible.');
+      setRoleActionFeedback('Le rôle a été copié dans votre entreprise et les utilisateurs concernés ont été basculés sur cette copie.');
+      window.location.reload();
+    } catch (error) {
+      setRoleActionFeedback(error instanceof Error ? error.message : 'Personnalisation du rôle impossible.');
+    }
+  };
+
+  const handleRenameRole = async (role: typeof roles[number]) => {
+    const libelle = window.prompt('Nouveau libellé du rôle :', role.libelle);
+    if (libelle === null || !libelle.trim()) return;
+    setRoleActionFeedback(null);
+    try {
+      const response = await fetch('/api/admin/rbac', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: role.id, libelle: libelle.trim() }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Renommage du rôle impossible.');
+      window.location.reload();
+    } catch (error) {
+      setRoleActionFeedback(error instanceof Error ? error.message : 'Renommage du rôle impossible.');
+    }
+  };
+
+  const handleResetRole = async (role: typeof roles[number]) => {
+    if (!window.confirm(`Réinitialiser « ${role.libelle} » sur le modèle système ? Les utilisateurs conserveront le même profil métier, mais retrouveront les droits par défaut.`)) return;
+    setRoleActionFeedback(null);
+    try {
+      const response = await fetch(`/api/admin/rbac?id=${encodeURIComponent(role.id)}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Réinitialisation du rôle impossible.');
+      window.location.reload();
+    } catch (error) {
+      setRoleActionFeedback(error instanceof Error ? error.message : 'Réinitialisation du rôle impossible.');
+    }
+  };
+
+  // Matrix toggle helper — les modèles globaux et l'administrateur sont en lecture seule.
   const handleToggleMatrixCell = (roleId: string, permId: string) => {
-    if (roleId === 'role-admin') return; // Admin is always 100% granted
+    if (!isEditableRole(roleId)) return;
 
     setMatrixState(prev => {
       const exists = prev.some(rp => rp.role_id === roleId && rp.permission_id === permId);
@@ -316,8 +414,8 @@ export const AdministrationView: React.FC = () => {
 
   // Cocher / Décocher toutes les actions d'un module pour un rôle spécifique
   const handleToggleRoleModule = (roleId: string, modCode: ModuleCode) => {
-    if (roleId === 'role-admin') return;
-    const permIds = ACTIONS_LIST.map(a => `perm-${modCode.toLowerCase()}-${a.toLowerCase()}`);
+    if (!isEditableRole(roleId)) return;
+    const permIds = permissions.filter(permission => permission.module === modCode).map(permission => permission.id);
     const allGranted = permIds.every(pid =>
       matrixState.some(rp => rp.role_id === roleId && rp.permission_id === pid)
     );
@@ -336,8 +434,8 @@ export const AdministrationView: React.FC = () => {
 
   // Cocher / Décocher tout un module pour tous les rôles cibles
   const handleToggleModuleAllRoles = (modCode: ModuleCode, grant: boolean) => {
-    const permIds = ACTIONS_LIST.map(a => `perm-${modCode.toLowerCase()}-${a.toLowerCase()}`);
-    const nonAdminRoles = roles.filter(r => r.code !== 'ADMINISTRATEUR');
+    const permIds = permissions.filter(permission => permission.module === modCode).map(permission => permission.id);
+    const nonAdminRoles = roles.filter(r => Boolean(r.entreprise_id) && r.code !== 'ADMINISTRATEUR');
 
     setMatrixState(prev => {
       if (!grant) {
@@ -398,16 +496,30 @@ export const AdministrationView: React.FC = () => {
       if (matrixRoleFocus !== 'ALL') {
         return r.id === matrixRoleFocus || r.code === 'ADMINISTRATEUR';
       }
-      if (matrixRoleCategoryFilter === 'CENTRAL') return r.niveau_hierarchique <= 2 || r.code === 'ADMINISTRATEUR';
-      if (matrixRoleCategoryFilter === 'CHANTIER') return r.niveau_hierarchique > 2 || r.code === 'ADMINISTRATEUR';
+      if (matrixRoleCategoryFilter === 'CENTRAL') return r.type_acces !== 'CHANTIER' || r.code === 'ADMINISTRATEUR';
+      if (matrixRoleCategoryFilter === 'CHANTIER') return r.type_acces !== 'CENTRAL' || r.code === 'ADMINISTRATEUR';
       return true;
     });
   }, [roles, matrixRoleCategoryFilter, matrixRoleFocus]);
 
-  const handleSaveMatrix = () => {
-    saveRbacMatrix(matrixState);
-    setMatrixSuccessMsg('La matrice des permissions RBAC a été enregistrée et déployée avec succès.');
-    setTimeout(() => setMatrixSuccessMsg(null), 3000);
+  const handleSaveMatrix = async () => {
+    setMatrixSuccessMsg(null);
+    setMatrixErrorMsg(null);
+    try {
+      const editableRoleIds = new Set(roles.filter((role) => Boolean(role.entreprise_id) && role.code !== 'ADMINISTRATEUR').map((role) => role.id));
+      const persistedAssignments = matrixState.filter((item) => editableRoleIds.has(item.role_id));
+      const response = await fetch('/api/admin/rbac', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rolePermissions: persistedAssignments }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Enregistrement RBAC refusé par le serveur.');
+      setMatrixSuccessMsg(`Matrice enregistrée en base pour ${result.updated_roles || 0} rôle(s) personnalisé(s).`);
+      window.setTimeout(() => window.location.reload(), 900);
+    } catch (error) {
+      setMatrixErrorMsg(error instanceof Error ? error.message : 'Impossible d’enregistrer la matrice RBAC.');
+    }
   };
 
   // Filtering users
@@ -715,7 +827,7 @@ export const AdministrationView: React.FC = () => {
 
                             <button
                               onClick={() => handleToggleUserStatus(u)}
-                              disabled={u.role_id === 'role-admin'}
+                              disabled={roles.some(role => role.id === u.role_id && role.code === 'ADMINISTRATEUR')}
                               className={`p-1.5 rounded hover:bg-slate-100 ${
                                 u.statut === 'ACTIF' ? 'text-amber-600' : 'text-emerald-600'
                               } disabled:opacity-30`}
@@ -724,7 +836,7 @@ export const AdministrationView: React.FC = () => {
                               {u.statut === 'ACTIF' ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
                             </button>
 
-                            {u.role_id !== 'role-admin' && (
+                            {!roles.some(role => role.id === u.role_id && role.code === 'ADMINISTRATEUR') && (
                               <button
                                 onClick={() => setDeleteConfirmUser(u)}
                                 className="p-1.5 rounded hover:bg-rose-50 text-rose-500 hover:text-rose-700"
@@ -762,7 +874,7 @@ export const AdministrationView: React.FC = () => {
                   Configuration Complète des Habilitations par Rôle et par Module
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-                  Contrôle d'accès strict (Règle N°11) : chaque module dispose de 7 permissions indépendantes (Consulter, Ajouter, Modifier, Supprimer, Valider, Refuser, Exporter). Tout accès non explicitement accordé est systématiquement rejeté par le serveur.
+                  Les modèles système restent protégés. Personnalisez une copie dans votre entreprise pour gérer ses droits sans modifier les autres sociétés ; les affectations des utilisateurs de ce rôle suivent automatiquement la copie locale.
                 </p>
               </div>
 
@@ -795,6 +907,50 @@ export const AdministrationView: React.FC = () => {
               </div>
             </div>
 
+            <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-3">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <select
+                  value={selectedTemplateRoleId}
+                  onChange={(event) => setSelectedTemplateRoleId(event.target.value)}
+                  className="min-w-[220px] flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"
+                >
+                  <option value="">Choisir un modèle système…</option>
+                  {roles.filter((role) => !role.entreprise_id && role.code !== 'ADMINISTRATEUR').map((role) => (
+                    <option key={role.id} value={role.id}>{role.libelle}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleCustomizeRole}
+                  disabled={!selectedTemplateRoleId}
+                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Personnaliser
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Rôles personnalisés</span>
+                {roles.filter((role) => Boolean(role.entreprise_id) && role.code !== 'ADMINISTRATEUR').map((role) => (
+                  <span key={role.id} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[11px] text-emerald-800">
+                    {role.libelle}
+                    <button onClick={() => handleRenameRole(role)} className="rounded p-1 hover:bg-emerald-100" title="Renommer">
+                      <Edit className="h-3 w-3" />
+                    </button>
+                    <button onClick={() => handleResetRole(role)} className="rounded p-1 hover:bg-rose-100 hover:text-rose-700" title="Réinitialiser sur le modèle">
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {!roles.some((role) => Boolean(role.entreprise_id) && role.code !== 'ADMINISTRATEUR') && (
+                  <span className="text-[11px] text-slate-400">Aucune copie locale pour le moment.</span>
+                )}
+              </div>
+            </div>
+            {roleActionFeedback && (
+              <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+                {roleActionFeedback}
+              </div>
+            )}
+
             {/* Notifications & Change Alerts */}
             {matrixSuccessMsg && (
               <div className="mt-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-medium flex items-center justify-between shadow-xs">
@@ -803,6 +959,11 @@ export const AdministrationView: React.FC = () => {
                   <span>{matrixSuccessMsg}</span>
                 </div>
                 <span className="text-[11px] text-emerald-600 font-mono">Déployé sur l'environnement de production</span>
+              </div>
+            )}
+            {matrixErrorMsg && (
+              <div className="mt-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs font-medium">
+                {matrixErrorMsg}
               </div>
             )}
 
@@ -879,12 +1040,12 @@ export const AdministrationView: React.FC = () => {
                 >
                   <option value="ALL">Tous les 11 rôles</option>
                   <optgroup label="Rôles du Siège">
-                    {roles.filter(r => r.niveau_hierarchique <= 2).map(r => (
+                    {roles.filter(r => r.type_acces === 'CENTRAL' || r.type_acces === 'HYBRIDE' || (r.niveau_hierarchique ?? 99) <= 2).map(r => (
                       <option key={r.id} value={r.id}>{r.libelle}</option>
                     ))}
                   </optgroup>
                   <optgroup label="Rôles de Chantier">
-                    {roles.filter(r => r.niveau_hierarchique > 2).map(r => (
+                    {roles.filter(r => r.type_acces === 'CHANTIER' || (r.type_acces !== 'CENTRAL' && r.type_acces !== 'HYBRIDE' && (r.niveau_hierarchique ?? 99) > 2)).map(r => (
                       <option key={r.id} value={r.id}>{r.libelle}</option>
                     ))}
                   </optgroup>
@@ -913,7 +1074,7 @@ export const AdministrationView: React.FC = () => {
             {filteredModules.map((mod) => {
               const ModIcon = MODULE_ICONS[mod.code] || Building;
               const isCollapsed = !!collapsedModules[mod.code];
-              const modulePermIds = ACTIONS_LIST.map(a => `perm-${mod.code.toLowerCase()}-${a.toLowerCase()}`);
+              const modulePermIds = permissions.filter(permission => permission.module === mod.code).map(permission => permission.id);
               
               // Compteur de permissions accordées pour ce module
               const grantedCount = matrixState.filter(rp => modulePermIds.includes(rp.permission_id)).length;
@@ -1017,7 +1178,7 @@ export const AdministrationView: React.FC = () => {
                             </th>
                             {filteredRoles.map(r => {
                               const isAdmin = r.code === 'ADMINISTRATEUR';
-                              const isCentral = r.niveau_hierarchique <= 2;
+                              const isCentral = r.type_acces === 'CENTRAL' || r.type_acces === 'HYBRIDE' || (r.niveau_hierarchique ?? 99) <= 2;
                               return (
                                 <th
                                   key={r.id}
@@ -1044,7 +1205,7 @@ export const AdministrationView: React.FC = () => {
                                     </span>
                                   </div>
 
-                                  {!isAdmin && (
+                                  {Boolean(r.entreprise_id) && !isAdmin && (
                                     <div className="mt-1.5">
                                       <button
                                         onClick={() => handleToggleRoleModule(r.id, mod.code)}
@@ -1062,9 +1223,9 @@ export const AdministrationView: React.FC = () => {
                         </thead>
 
                         <tbody className="divide-y divide-slate-100">
-                          {ACTIONS_LIST.map((action) => {
+                          {(mod.code === 'CAISSE' ? [...ACTIONS_LIST, 'SORTIR', 'DEMANDER', 'APPROVISIONNER', 'GERER_PLAFOND', 'TRAITER_DEMANDE'] as PermissionAction[] : ACTIONS_LIST).map((action) => {
                             const actionConf = ACTION_CONFIG[action];
-                            const permId = `perm-${mod.code.toLowerCase()}-${action.toLowerCase()}`;
+                            const permId = permissions.find(permission => permission.module === mod.code && permission.action === action)?.id || ''; 
 
                             return (
                               <tr key={permId} className="hover:bg-slate-50/80 transition-colors group">
@@ -1081,6 +1242,7 @@ export const AdministrationView: React.FC = () => {
 
                                 {filteredRoles.map((r) => {
                                   const isAdmin = r.code === 'ADMINISTRATEUR';
+                                  const isReadOnly = isAdmin || !r.entreprise_id;
                                   const isGranted = isAdmin || matrixState.some(
                                     rp => rp.role_id === r.id && rp.permission_id === permId
                                   );
@@ -1092,9 +1254,9 @@ export const AdministrationView: React.FC = () => {
                                         isAdmin ? 'bg-amber-50/30' : isGranted ? 'bg-emerald-50/30' : ''
                                       }`}
                                     >
-                                      {isAdmin ? (
-                                        <div className="flex items-center justify-center" title="Administrateur : Accès intégral et permanent garanti par le système">
-                                          <div className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center shadow-2xs">
+                                      {isReadOnly ? (
+                                        <div className="flex items-center justify-center" title={isAdmin ? "Administrateur : accès intégral et permanent" : "Modèle système : personnalisez ce rôle pour modifier ses droits"}>
+                                          <div className={`w-5 h-5 rounded-md flex items-center justify-center shadow-2xs ${isAdmin ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>
                                             <Lock className="w-3 h-3" />
                                           </div>
                                         </div>
@@ -1646,6 +1808,7 @@ export const AdministrationView: React.FC = () => {
                   type="email"
                   required
                   value={userFormData.email}
+                  disabled={Boolean(editingUser)}
                   onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono"
                 />
@@ -1674,12 +1837,25 @@ export const AdministrationView: React.FC = () => {
                 </div>
               </div>
 
+              {!editingUser && (
+                <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50">
+                  <p className="font-semibold text-emerald-900">Invitation sécurisée par e-mail</p>
+                  <p className="text-[11px] text-emerald-800 mt-1">BatiProm crée le compte Supabase Auth et envoie un lien d’invitation à cette adresse. L’utilisateur définira lui-même son mot de passe à l’ouverture du lien.</p>
+                </div>
+              )}
+              {userActionError && (
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs">{userActionError}</div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">Périmètre d'activité *</label>
                   <select
                     value={userFormData.type}
-                    onChange={(e) => setUserFormData({ ...userFormData, type: e.target.value as UserType })}
+                    onChange={(e) => {
+                      const type = e.target.value as UserType;
+                      const compatibleRole = roles.find(r => r.type_acces === type || r.type_acces === 'HYBRIDE');
+                      setUserFormData({ ...userFormData, type, role_id: compatibleRole?.id || '', chantiers_assignes: type === 'CENTRAL' ? [] : userFormData.chantiers_assignes });
+                    }}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white"
                   >
                     <option value="CENTRAL">Utilisateur Central (Siège)</option>
@@ -1694,7 +1870,7 @@ export const AdministrationView: React.FC = () => {
                     onChange={(e) => setUserFormData({ ...userFormData, role_id: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white"
                   >
-                    {roles.map(r => (
+                    {roles.filter(r => r.type_acces === userFormData.type || r.type_acces === 'HYBRIDE').map(r => (
                       <option key={r.id} value={r.id}>{r.libelle}</option>
                     ))}
                   </select>
@@ -1804,10 +1980,10 @@ export const AdministrationView: React.FC = () => {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 text-xs">
             <div className="flex items-center gap-2 text-rose-600 font-bold text-sm mb-2">
               <AlertTriangle className="w-5 h-5" />
-              <span>Suppression Contrôlée</span>
+              <span>Désactivation contrôlée</span>
             </div>
             <p className="text-slate-600 mb-4 leading-relaxed">
-              Confirmez-vous la suppression définitive du compte de <strong>{deleteConfirmUser.prenom} {deleteConfirmUser.nom}</strong> ({deleteConfirmUser.poste}) ? Toutes ses sessions actives seront révoquées et l'opération sera inscrite au journal d'audit.
+              Confirmez-vous la désactivation du compte de <strong>{deleteConfirmUser.prenom} {deleteConfirmUser.nom}</strong> ({deleteConfirmUser.poste}) ? Le profil et son historique métier seront conservés, l'accès applicatif sera bloqué et le compte Supabase Auth sera suspendu.
             </p>
 
             <div className="flex justify-end gap-2">
@@ -1821,7 +1997,7 @@ export const AdministrationView: React.FC = () => {
                 onClick={handleConfirmDelete}
                 className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold"
               >
-                Confirmer la suppression
+                Confirmer la désactivation
               </button>
             </div>
           </div>

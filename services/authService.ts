@@ -13,37 +13,23 @@ import {
   PermissionAction,
   UserRole
 } from '../types/database';
-import {
-  DEMO_UTILISATEURS,
-  DEMO_ROLES,
-  DEMO_PERMISSIONS,
-  DEMO_ROLE_PERMISSIONS,
-  DEMO_SESSIONS,
-  MODULES_LIST
-} from '../data/demoData';
-
-// Simulated password hashes (default password for all demo accounts: "BatiProm@2026")
-const DEFAULT_DEMO_PASSWORD = 'password123';
-const USER_PASSWORDS: Record<string, string> = {
-  'admin@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'rh@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'juridique@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'compta@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'technique@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'materiel@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'commercial@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'appro@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  // Chantiers
-  'conducteur.cheraga@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'metreur.cheraga@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'magasinier.cheraga@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'conducteur.oran@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'metreur.oran@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'magasinier.oran@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'conducteur.constantine@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'metreur.constantine@batiprom-dz.com': DEFAULT_DEMO_PASSWORD,
-  'magasinier.constantine@batiprom-dz.com': DEFAULT_DEMO_PASSWORD
-};
+const MODULES_LIST: { code: ModuleCode; libelle: string; isCentralOnly: boolean }[] = [
+  { code: 'DASHBOARD', libelle: 'Tableau de bord', isCentralOnly: false },
+  { code: 'CHANTIERS', libelle: 'Chantiers', isCentralOnly: false },
+  { code: 'TECHNIQUE', libelle: 'Technique & Métrés', isCentralOnly: false },
+  { code: 'MATERIEL', libelle: 'Matériel & Parc Engins', isCentralOnly: true },
+  { code: 'MAGASIN', libelle: 'Magasin & Stocks', isCentralOnly: false },
+  { code: 'APPROVISIONNEMENTS', libelle: 'Approvisionnements & Achats', isCentralOnly: false },
+  { code: 'CAISSE', libelle: 'Caisse de fonds de roulement', isCentralOnly: false },
+  { code: 'RH', libelle: 'Ressources Humaines', isCentralOnly: true },
+  { code: 'COMMERCIAL', libelle: 'Commercial & VEFA', isCentralOnly: true },
+  { code: 'COMPTABILITE', libelle: 'Comptabilité & Fiscalité', isCentralOnly: true },
+  { code: 'JURIDIQUE', libelle: 'Affaires Juridiques', isCentralOnly: true },
+  { code: 'ADMINISTRATION', libelle: 'Administration & Sécurité', isCentralOnly: true },
+  { code: 'DOCUMENTS', libelle: 'Documents & GED', isCentralOnly: false },
+  { code: 'NOTIFICATIONS', libelle: 'Notifications & Alertes', isCentralOnly: false },
+  { code: 'PARAMETRES', libelle: 'Paramètres Généraux', isCentralOnly: true },
+];
 
 export interface VerificationResult {
   allowed: boolean;
@@ -53,19 +39,18 @@ export interface VerificationResult {
 }
 
 export class AuthService {
-  private users: Utilisateur[] = [...DEMO_UTILISATEURS];
-  private roles: Role[] = [...DEMO_ROLES];
-  private permissions: Permission[] = [...DEMO_PERMISSIONS];
-  private rolePermissions: RolePermission[] = [...DEMO_ROLE_PERMISSIONS];
-  private sessions: UserSession[] = [...DEMO_SESSIONS];
+  private users: Utilisateur[] = [];
+  private roles: Role[] = [];
+  private permissions: Permission[] = [];
+  private rolePermissions: RolePermission[] = [];
+  private sessions: UserSession[] = [];
   private currentSessionToken: string | null = null;
   private currentAuthenticatedUser: Utilisateur | null = null;
 
   constructor() {
-    // Initialise avec le premier utilisateur par défaut (Admin)
-    const initialUser = this.users[0];
-    this.currentAuthenticatedUser = initialUser;
-    this.currentSessionToken = 'jwt_adm_session_live_8912';
+    // Aucune session ni identité de démonstration au démarrage.
+    this.currentAuthenticatedUser = null;
+    this.currentSessionToken = null;
   }
 
   // ==========================================
@@ -75,54 +60,45 @@ export class AuthService {
   public async login(
     email: string,
     passwordAttempt: string,
-    deviceInfo: string = 'Navigateur Web'
+    _deviceInfo: string = 'Navigateur Web'
   ): Promise<{ success: boolean; user?: Utilisateur; token?: string; error?: string }> {
-    const cleanEmail = email.trim().toLowerCase();
-    const user = this.users.find(u => u.email.toLowerCase() === cleanEmail);
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: passwordAttempt,
+      });
 
-    if (!user) {
-      return { success: false, error: 'Identifiants invalides (email introuvable).' };
+      if (error || !data.session) {
+        return { success: false, error: error?.message || 'Authentification Supabase impossible.' };
+      }
+
+      const response = await fetch('/api/auth/me', { cache: 'no-store' });
+      const profile = await response.json().catch(() => null);
+      if (!response.ok || !profile?.user) {
+        await supabase.auth.signOut();
+        return {
+          success: false,
+          error: profile?.error || 'Compte Auth créé, mais aucun profil BatiProm actif ne lui est associé. Contactez l’administrateur.',
+        };
+      }
+
+      this.currentAuthenticatedUser = profile.user as Utilisateur;
+      this.currentSessionToken = data.session.access_token;
+      this.users = [profile.user as Utilisateur, ...this.users.filter(u => u.id !== profile.user.id)];
+      this.roles = profile.roles || this.roles;
+      this.permissions = profile.permissions || this.permissions;
+      this.rolePermissions = profile.rolePermissions || this.rolePermissions;
+
+      return { success: true, user: profile.user as Utilisateur, token: data.session.access_token };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Erreur de connexion.' };
     }
-
-    if (user.statut === 'DESACTIVE') {
-      return { success: false, error: 'Compte désactivé. Veuillez contacter l’administrateur.' };
-    }
-
-    if (user.statut === 'SUSPENDU') {
-      return { success: false, error: 'Compte temporairement suspendu pour des raisons de sécurité.' };
-    }
-
-    // Vérification mot de passe
-    const expectedPassword = USER_PASSWORDS[cleanEmail] || DEFAULT_DEMO_PASSWORD;
-    if (passwordAttempt !== expectedPassword) {
-      return { success: false, error: 'Mot de passe erroné.' };
-    }
-
-    // Création session sécurisée
-    const token = `jwt_${user.type.toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    const newSession: UserSession = {
-      id: `sess-${Date.now()}`,
-      user_id: user.id,
-      token,
-      ip_address: '197.200.12.94',
-      device_info: deviceInfo,
-      created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 12 * 3600 * 1000).toISOString(), // 12 heures
-      is_revoked: false,
-      last_activity: new Date().toISOString()
-    };
-
-    this.sessions.unshift(newSession);
-    this.currentSessionToken = token;
-    this.currentAuthenticatedUser = user;
-
-    // Mise à jour date dernier accès
-    user.dernier_acces = new Date().toISOString();
-
-    return { success: true, user, token };
   }
 
   public logout(): void {
+    void import('@/lib/supabase/client').then(({ createClient }) => createClient().auth.signOut());
     if (this.currentSessionToken) {
       const activeSession = this.sessions.find(s => s.token === this.currentSessionToken);
       if (activeSession) {
@@ -131,6 +107,32 @@ export class AuthService {
     }
     this.currentSessionToken = null;
     this.currentAuthenticatedUser = null;
+  }
+
+  public restoreAuthenticatedSession(
+    user: Utilisateur,
+    roles: Role[],
+    permissions: Permission[],
+    rolePermissions: RolePermission[],
+    users: Utilisateur[] = [user]
+  ): void {
+    this.currentAuthenticatedUser = user;
+    this.users = [...users];
+    this.roles = [...roles];
+    this.permissions = [...permissions];
+    this.rolePermissions = [...rolePermissions];
+  }
+
+  public updateAuthorizationData(
+    roles: Role[],
+    permissions: Permission[],
+    rolePermissions: RolePermission[],
+    users?: Utilisateur[]
+  ): void {
+    this.roles = [...roles];
+    this.permissions = [...permissions];
+    this.rolePermissions = [...rolePermissions];
+    if (users) this.users = [...users];
   }
 
   public getAuthenticatedUser(): Utilisateur | null {
@@ -168,21 +170,10 @@ export class AuthService {
     return false;
   }
 
-  public resetPassword(email: string, newPassword?: string): { success: boolean; message: string; tempPassword?: string } {
-    const cleanEmail = email.trim().toLowerCase();
-    const user = this.users.find(u => u.email.toLowerCase() === cleanEmail);
-    if (!user) {
-      return { success: false, message: 'Aucun utilisateur trouvé avec cette adresse email.' };
-    }
-
-    const generatedPassword = newPassword || `BatiProm@${Math.floor(1000 + Math.random() * 9000)}`;
-    USER_PASSWORDS[cleanEmail] = generatedPassword;
-    user.must_change_password = true;
-
+  public resetPassword(_email: string, _newPassword?: string): { success: boolean; message: string; tempPassword?: string } {
     return {
-      success: true,
-      message: `Le mot de passe a été réinitialisé avec succès pour ${user.prenom} ${user.nom}.`,
-      tempPassword: generatedPassword
+      success: false,
+      message: 'La réinitialisation des mots de passe doit être effectuée par Supabase Auth via un e-mail de récupération.',
     };
   }
 
@@ -298,9 +289,11 @@ export class AuthService {
     }
 
     // RÈGLE 2 & 11 : Aucun accès par défaut sans autorisation explicite dans la matrice RBAC
-    const permId = `perm-${module.toLowerCase()}-${action.toLowerCase()}`;
-    const hasExplicitPermission = this.rolePermissions.some(
-      rp => rp.role_id === user.role_id && rp.permission_id === permId
+    const permission = this.permissions.find(
+      (item) => item.module === module && item.action === action
+    );
+    const hasExplicitPermission = Boolean(permission) && this.rolePermissions.some(
+      (rp) => rp.role_id === user.role_id && rp.permission_id === permission?.id
     );
 
     if (!hasExplicitPermission) {
@@ -360,7 +353,6 @@ export class AuthService {
       updated_at: new Date().toISOString()
     };
 
-    USER_PASSWORDS[cleanEmail] = userData.initialPassword || DEFAULT_DEMO_PASSWORD;
     this.users.push(newUser);
     return newUser;
   }
@@ -408,7 +400,6 @@ export class AuthService {
     });
 
     this.users = this.users.filter(u => u.id !== id);
-    delete USER_PASSWORDS[user.email.toLowerCase()];
 
     return { success: true, message: `L'utilisateur ${user.prenom} ${user.nom} a été supprimé.` };
   }

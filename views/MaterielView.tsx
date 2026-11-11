@@ -942,7 +942,7 @@ export const MaterielView: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
-                          {v.assurance_police || 'POL-FLOTTE-2024'}
+                          {v.assurance_police || 'Non renseignée'}
                         </td>
                         <td className="py-3.5 px-4 font-semibold text-slate-800">
                           {v.date_fin_assurance || 'Non renseignée'}
@@ -1138,11 +1138,11 @@ export const MaterielView: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
-                ajouterVehicule({
+                const result = await ajouterVehicule({
                   ...formDataVehicule,
-                  entreprise_id: 'ent-001',
+                  entreprise_id: currentUser?.entreprise_id || '',
                   historique_affectations: [
                     {
                       id: `aff-${Date.now()}`,
@@ -1154,6 +1154,7 @@ export const MaterielView: React.FC = () => {
                     }
                   ]
                 });
+                if (!result) return;
                 setIsAddModalOpen(false);
               }}
               className="space-y-4 text-xs"
@@ -1285,10 +1286,10 @@ export const MaterielView: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
                 const chant = chantiers.find(c => c.id === formAffectation.chantier_id);
-                affecterVehiculeChantier(
+                const result = await affecterVehiculeChantier(
                   targetVehicule.id,
                   formAffectation.chantier_id,
                   chant?.nom_projet || 'Chantier',
@@ -1296,6 +1297,7 @@ export const MaterielView: React.FC = () => {
                   formAffectation.motif,
                   formAffectation.bon_transfert_ref
                 );
+                if (!result) return;
                 setIsAffectModalOpen(false);
               }}
               className="space-y-3 text-xs"
@@ -1381,13 +1383,14 @@ export const MaterielView: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
-                mettreAJourCompteur(
+                const result = await mettreAJourCompteur(
                   targetVehicule.id,
                   formCompteur.nouveauKm,
                   formCompteur.nouvellesHeures
                 );
+                if (!result) return;
                 setIsCompteurModalOpen(false);
               }}
               className="space-y-3 text-xs"
@@ -1447,13 +1450,14 @@ export const MaterielView: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
-                enregistrerEntretien({
+                const result = await enregistrerEntretien({
                   ...formEntretien,
                   vehicule_id: targetVehicule.id,
                   vehicule_nom: `${targetVehicule.marque} ${targetVehicule.modele}`
                 });
+                if (!result) return;
                 setIsEntretienModalOpen(false);
               }}
               className="space-y-3 text-xs"
@@ -1576,15 +1580,16 @@ export const MaterielView: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
-                declarerPanne(
+                const result = await declarerPanne(
                   targetVehicule.id,
                   formPanne.description,
                   formPanne.gravite,
                   formPanne.garage_nom,
                   formPanne.coutEstime
                 );
+                if (!result) return;
                 setIsPanneModalOpen(false);
               }}
               className="space-y-3 text-xs"
@@ -1650,9 +1655,9 @@ export const MaterielView: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
-                permuterPneus(
+                const result = await permuterPneus(
                   targetVehicule.id,
                   formPermut.pneu1Id,
                   formPermut.pneu2Id,
@@ -1660,6 +1665,7 @@ export const MaterielView: React.FC = () => {
                   formPermut.motif,
                   formPermut.operateur
                 );
+                if (!result) return;
                 setIsPermutModalOpen(false);
               }}
               className="space-y-3 text-xs"
@@ -1756,9 +1762,9 @@ export const MaterielView: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
-                remplacerPieceRemplacable(
+                const result = await remplacerPieceRemplacable(
                   targetPiece.id,
                   {
                     vehicule_id: targetVehicule.id,
@@ -1777,6 +1783,7 @@ export const MaterielView: React.FC = () => {
                   formRemplacement.motif,
                   formRemplacement.note
                 );
+                if (!result) return;
                 setIsRemplacementModalOpen(false);
               }}
               className="space-y-3 text-xs"
@@ -1888,9 +1895,9 @@ export const MaterielView: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
-                renouvelerAssurance(
+                const result = await renouvelerAssurance(
                   targetVehicule.id,
                   formAssurance.nouvelleCompagnie,
                   formAssurance.nouvellePolice,
@@ -1899,6 +1906,7 @@ export const MaterielView: React.FC = () => {
                   formAssurance.coutDzd,
                   formAssurance.quittanceRef
                 );
+                if (!result) return;
                 setIsAssuranceModalOpen(false);
               }}
               className="space-y-3 text-xs"

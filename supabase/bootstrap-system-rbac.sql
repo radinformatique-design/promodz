@@ -1,0 +1,197 @@
+-- Catalogue de rôles et permissions de référence BatiProm.
+-- Ce script n'insère aucune donnée utilisateur ou métier de démonstration.
+-- À exécuter après bootstrap-first-admin.sql. Les rôles sont des modèles globaux
+-- en lecture seule tant que leur portée n'est pas migrée par entreprise.
+
+BEGIN;
+
+INSERT INTO public.roles (id, code, libelle, description, type_acces, created_at)
+VALUES
+  (gen_random_uuid()::text, 'RESPONSABLE_RH', 'Responsable RH (Central)', 'Gestion centralisée du personnel, contrats et pointages ouvriers.', 'CENTRAL', now()),
+  (gen_random_uuid()::text, 'RESPONSABLE_JURIDIQUE', 'Responsable Juridique (Central)', 'Affaires foncières, permis et contentieux.', 'CENTRAL', now()),
+  (gen_random_uuid()::text, 'RESPONSABLE_COMPTABILITE', 'Responsable Comptabilité & Fiscalité (Central)', 'Comptabilité analytique, fiscalité et trésorerie.', 'CENTRAL', now()),
+  (gen_random_uuid()::text, 'RESPONSABLE_TECHNIQUE', 'Responsable Technique (Central)', 'Coordination technique des chantiers et réceptions de travaux.', 'CENTRAL', now()),
+  (gen_random_uuid()::text, 'RESPONSABLE_MATERIEL', 'Responsable Matériel (Central)', 'Parc engins et maintenances.', 'CENTRAL', now()),
+  (gen_random_uuid()::text, 'RESPONSABLE_COMMERCIAL', 'Responsable Commercial (Central)', 'Programmes VEFA et suivi des acquéreurs.', 'CENTRAL', now()),
+  (gen_random_uuid()::text, 'RESPONSABLE_APPROVISIONNEMENTS', 'Responsable Approvisionnements (Central)', 'Achats et validation des commandes.', 'CENTRAL', now()),
+  (gen_random_uuid()::text, 'CONDUCTEUR_TRAVAUX', 'Conducteur de Travaux (Chantier)', 'Pilotage opérationnel et demandes d''achat de son chantier.', 'CHANTIER', now()),
+  (gen_random_uuid()::text, 'METREUR_VERIFICATEUR', 'Métreur Vérificateur (Chantier)', 'Métrés et situations techniques de son chantier.', 'CHANTIER', now()),
+  (gen_random_uuid()::text, 'MAGASINIER', 'Magasinier (Chantier)', 'Stocks et réceptions du magasin de son chantier.', 'CHANTIER', now())
+ON CONFLICT DO NOTHING;
+
+WITH modules(module) AS (
+  VALUES
+    ('DASHBOARD'),
+    ('CHANTIERS'),
+    ('TECHNIQUE'),
+    ('MATERIEL'),
+    ('MAGASIN'),
+    ('APPROVISIONNEMENTS'),
+    ('RH'),
+    ('COMMERCIAL'),
+    ('COMPTABILITE'),
+    ('JURIDIQUE'),
+    ('ADMINISTRATION'),
+    ('DOCUMENTS'),
+    ('NOTIFICATIONS'),
+    ('PARAMETRES'),
+    ('CAISSE')
+), actions(action) AS (
+  VALUES
+    ('CONSULTER'),
+    ('AJOUTER'),
+    ('MODIFIER'),
+    ('SUPPRIMER'),
+    ('VALIDER'),
+    ('REFUSER'),
+    ('EXPORTER')
+)
+INSERT INTO public.permissions (id, module, action, description)
+SELECT gen_random_uuid()::text, modules.module, actions.action,
+       actions.action || ' dans le module ' || modules.module
+FROM modules CROSS JOIN actions
+ON CONFLICT (module, action) DO NOTHING;
+
+-- Actions spécifiques au cycle de vie de la caisse chantier.
+INSERT INTO public.permissions (id, module, action, description)
+VALUES
+  (gen_random_uuid()::text, 'CAISSE', 'SORTIR', 'Enregistrer une sortie de caisse chantier'),
+  (gen_random_uuid()::text, 'CAISSE', 'DEMANDER', 'Demander un réapprovisionnement de caisse'),
+  (gen_random_uuid()::text, 'CAISSE', 'APPROVISIONNER', 'Enregistrer un approvisionnement de caisse'),
+  (gen_random_uuid()::text, 'CAISSE', 'GERER_PLAFOND', 'Définir le plafond de caisse chantier'),
+  (gen_random_uuid()::text, 'CAISSE', 'TRAITER_DEMANDE', 'Approuver ou refuser une demande de caisse')
+ON CONFLICT (module, action) DO NOTHING;
+
+-- L'administrateur possède toutes les actions du catalogue.
+INSERT INTO public.role_permissions (id, role_id, permission_id)
+SELECT gen_random_uuid()::text, r.id, p.id
+FROM public.roles r CROSS JOIN public.permissions p
+WHERE r.code = 'ADMINISTRATEUR'
+  AND r.entreprise_id IS NOT NULL
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Matrice de base des rôles métier (droits minimaux par fonction).
+WITH assignments(role_code, module, action) AS (
+  VALUES
+  ('RESPONSABLE_RH', 'DASHBOARD', 'CONSULTER'),
+  ('RESPONSABLE_RH', 'CHANTIERS', 'CONSULTER'),
+  ('RESPONSABLE_RH', 'RH', 'CONSULTER'),
+  ('RESPONSABLE_RH', 'RH', 'AJOUTER'),
+  ('RESPONSABLE_RH', 'RH', 'MODIFIER'),
+  ('RESPONSABLE_RH', 'RH', 'VALIDER'),
+  ('RESPONSABLE_RH', 'RH', 'REFUSER'),
+  ('RESPONSABLE_RH', 'RH', 'EXPORTER'),
+  ('RESPONSABLE_RH', 'NOTIFICATIONS', 'CONSULTER'),
+  ('RESPONSABLE_JURIDIQUE', 'DASHBOARD', 'CONSULTER'),
+  ('RESPONSABLE_JURIDIQUE', 'JURIDIQUE', 'CONSULTER'),
+  ('RESPONSABLE_JURIDIQUE', 'JURIDIQUE', 'AJOUTER'),
+  ('RESPONSABLE_JURIDIQUE', 'JURIDIQUE', 'MODIFIER'),
+  ('RESPONSABLE_JURIDIQUE', 'JURIDIQUE', 'VALIDER'),
+  ('RESPONSABLE_JURIDIQUE', 'JURIDIQUE', 'REFUSER'),
+  ('RESPONSABLE_JURIDIQUE', 'JURIDIQUE', 'EXPORTER'),
+  ('RESPONSABLE_JURIDIQUE', 'CHANTIERS', 'CONSULTER'),
+  ('RESPONSABLE_JURIDIQUE', 'DOCUMENTS', 'CONSULTER'),
+  ('RESPONSABLE_JURIDIQUE', 'DOCUMENTS', 'VALIDER'),
+  ('RESPONSABLE_JURIDIQUE', 'NOTIFICATIONS', 'CONSULTER'),
+  ('RESPONSABLE_COMPTABILITE', 'CAISSE', 'CONSULTER'),
+  ('RESPONSABLE_COMPTABILITE', 'CAISSE', 'APPROVISIONNER'),
+  ('RESPONSABLE_COMPTABILITE', 'CAISSE', 'GERER_PLAFOND'),
+  ('RESPONSABLE_COMPTABILITE', 'CAISSE', 'TRAITER_DEMANDE'),
+  ('CONDUCTEUR_TRAVAUX', 'CAISSE', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'CAISSE', 'SORTIR'),
+  ('CONDUCTEUR_TRAVAUX', 'CAISSE', 'DEMANDER'),
+  ('RESPONSABLE_COMPTABILITE', 'DASHBOARD', 'CONSULTER'),
+  ('RESPONSABLE_COMPTABILITE', 'COMPTABILITE', 'CONSULTER'),
+  ('RESPONSABLE_COMPTABILITE', 'COMPTABILITE', 'AJOUTER'),
+  ('RESPONSABLE_COMPTABILITE', 'COMPTABILITE', 'MODIFIER'),
+  ('RESPONSABLE_COMPTABILITE', 'COMPTABILITE', 'VALIDER'),
+  ('RESPONSABLE_COMPTABILITE', 'COMPTABILITE', 'REFUSER'),
+  ('RESPONSABLE_COMPTABILITE', 'COMPTABILITE', 'EXPORTER'),
+  ('RESPONSABLE_COMPTABILITE', 'APPROVISIONNEMENTS', 'CONSULTER'),
+  ('RESPONSABLE_COMPTABILITE', 'APPROVISIONNEMENTS', 'VALIDER'),
+  ('RESPONSABLE_COMPTABILITE', 'APPROVISIONNEMENTS', 'REFUSER'),
+  ('RESPONSABLE_COMPTABILITE', 'CHANTIERS', 'CONSULTER'),
+  ('RESPONSABLE_COMPTABILITE', 'DOCUMENTS', 'CONSULTER'),
+  ('RESPONSABLE_COMPTABILITE', 'NOTIFICATIONS', 'CONSULTER'),
+  ('RESPONSABLE_TECHNIQUE', 'DASHBOARD', 'CONSULTER'),
+  ('RESPONSABLE_TECHNIQUE', 'TECHNIQUE', 'CONSULTER'),
+  ('RESPONSABLE_TECHNIQUE', 'TECHNIQUE', 'AJOUTER'),
+  ('RESPONSABLE_TECHNIQUE', 'TECHNIQUE', 'MODIFIER'),
+  ('RESPONSABLE_TECHNIQUE', 'TECHNIQUE', 'VALIDER'),
+  ('RESPONSABLE_TECHNIQUE', 'TECHNIQUE', 'REFUSER'),
+  ('RESPONSABLE_TECHNIQUE', 'TECHNIQUE', 'EXPORTER'),
+  ('RESPONSABLE_TECHNIQUE', 'CHANTIERS', 'CONSULTER'),
+  ('RESPONSABLE_TECHNIQUE', 'CHANTIERS', 'MODIFIER'),
+  ('RESPONSABLE_TECHNIQUE', 'DOCUMENTS', 'CONSULTER'),
+  ('RESPONSABLE_TECHNIQUE', 'DOCUMENTS', 'AJOUTER'),
+  ('RESPONSABLE_TECHNIQUE', 'DOCUMENTS', 'VALIDER'),
+  ('RESPONSABLE_TECHNIQUE', 'NOTIFICATIONS', 'CONSULTER'),
+  ('RESPONSABLE_MATERIEL', 'DASHBOARD', 'CONSULTER'),
+  ('RESPONSABLE_MATERIEL', 'MATERIEL', 'CONSULTER'),
+  ('RESPONSABLE_MATERIEL', 'MATERIEL', 'AJOUTER'),
+  ('RESPONSABLE_MATERIEL', 'MATERIEL', 'MODIFIER'),
+  ('RESPONSABLE_MATERIEL', 'MATERIEL', 'VALIDER'),
+  ('RESPONSABLE_MATERIEL', 'MATERIEL', 'EXPORTER'),
+  ('RESPONSABLE_MATERIEL', 'CHANTIERS', 'CONSULTER'),
+  ('RESPONSABLE_MATERIEL', 'NOTIFICATIONS', 'CONSULTER'),
+  ('RESPONSABLE_COMMERCIAL', 'DASHBOARD', 'CONSULTER'),
+  ('RESPONSABLE_COMMERCIAL', 'COMMERCIAL', 'CONSULTER'),
+  ('RESPONSABLE_COMMERCIAL', 'COMMERCIAL', 'AJOUTER'),
+  ('RESPONSABLE_COMMERCIAL', 'COMMERCIAL', 'MODIFIER'),
+  ('RESPONSABLE_COMMERCIAL', 'COMMERCIAL', 'VALIDER'),
+  ('RESPONSABLE_COMMERCIAL', 'COMMERCIAL', 'EXPORTER'),
+  ('RESPONSABLE_COMMERCIAL', 'CHANTIERS', 'CONSULTER'),
+  ('RESPONSABLE_COMMERCIAL', 'NOTIFICATIONS', 'CONSULTER'),
+  ('RESPONSABLE_APPROVISIONNEMENTS', 'DASHBOARD', 'CONSULTER'),
+  ('RESPONSABLE_APPROVISIONNEMENTS', 'APPROVISIONNEMENTS', 'CONSULTER'),
+  ('RESPONSABLE_APPROVISIONNEMENTS', 'APPROVISIONNEMENTS', 'AJOUTER'),
+  ('RESPONSABLE_APPROVISIONNEMENTS', 'APPROVISIONNEMENTS', 'MODIFIER'),
+  ('RESPONSABLE_APPROVISIONNEMENTS', 'APPROVISIONNEMENTS', 'VALIDER'),
+  ('RESPONSABLE_APPROVISIONNEMENTS', 'APPROVISIONNEMENTS', 'REFUSER'),
+  ('RESPONSABLE_APPROVISIONNEMENTS', 'APPROVISIONNEMENTS', 'EXPORTER'),
+  ('RESPONSABLE_APPROVISIONNEMENTS', 'CHANTIERS', 'CONSULTER'),
+  ('RESPONSABLE_APPROVISIONNEMENTS', 'NOTIFICATIONS', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'DASHBOARD', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'RH', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'RH', 'AJOUTER'),
+  ('CONDUCTEUR_TRAVAUX', 'CHANTIERS', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'CHANTIERS', 'AJOUTER'),
+  ('CONDUCTEUR_TRAVAUX', 'CHANTIERS', 'MODIFIER'),
+  ('CONDUCTEUR_TRAVAUX', 'TECHNIQUE', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'TECHNIQUE', 'AJOUTER'),
+  ('CONDUCTEUR_TRAVAUX', 'TECHNIQUE', 'MODIFIER'),
+  ('CONDUCTEUR_TRAVAUX', 'MATERIEL', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'MAGASIN', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'APPROVISIONNEMENTS', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'APPROVISIONNEMENTS', 'AJOUTER'),
+  ('CONDUCTEUR_TRAVAUX', 'DOCUMENTS', 'CONSULTER'),
+  ('CONDUCTEUR_TRAVAUX', 'DOCUMENTS', 'AJOUTER'),
+  ('CONDUCTEUR_TRAVAUX', 'NOTIFICATIONS', 'CONSULTER'),
+  ('METREUR_VERIFICATEUR', 'DASHBOARD', 'CONSULTER'),
+  ('METREUR_VERIFICATEUR', 'CHANTIERS', 'CONSULTER'),
+  ('METREUR_VERIFICATEUR', 'TECHNIQUE', 'CONSULTER'),
+  ('METREUR_VERIFICATEUR', 'TECHNIQUE', 'AJOUTER'),
+  ('METREUR_VERIFICATEUR', 'TECHNIQUE', 'MODIFIER'),
+  ('METREUR_VERIFICATEUR', 'TECHNIQUE', 'VALIDER'),
+  ('METREUR_VERIFICATEUR', 'TECHNIQUE', 'EXPORTER'),
+  ('METREUR_VERIFICATEUR', 'DOCUMENTS', 'CONSULTER'),
+  ('METREUR_VERIFICATEUR', 'NOTIFICATIONS', 'CONSULTER'),
+  ('MAGASINIER', 'DASHBOARD', 'CONSULTER'),
+  ('MAGASINIER', 'CHANTIERS', 'CONSULTER'),
+  ('MAGASINIER', 'MAGASIN', 'CONSULTER'),
+  ('MAGASINIER', 'MAGASIN', 'AJOUTER'),
+  ('MAGASINIER', 'MAGASIN', 'MODIFIER'),
+  ('MAGASINIER', 'MAGASIN', 'VALIDER'),
+  ('MAGASINIER', 'MAGASIN', 'EXPORTER'),
+  ('MAGASINIER', 'APPROVISIONNEMENTS', 'CONSULTER'),
+  ('MAGASINIER', 'APPROVISIONNEMENTS', 'AJOUTER'),
+  ('MAGASINIER', 'NOTIFICATIONS', 'CONSULTER')
+)
+INSERT INTO public.role_permissions (id, role_id, permission_id)
+SELECT gen_random_uuid()::text, r.id, p.id
+FROM assignments a
+JOIN public.roles r ON r.code = a.role_code AND r.entreprise_id IS NULL
+JOIN public.permissions p ON p.module = a.module AND p.action = a.action
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+COMMIT;

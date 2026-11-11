@@ -40,8 +40,15 @@ model Entreprise {
 
   chantiers           Chantier[]
   utilisateurs        Utilisateur[]
+  roles               Role[]
   comptesBancaires    CompteBancaire[]
   parametres          ParametresGeneraux[]
+  fournisseurs        Fournisseur[]
+  documentsGED        DocumentGED[]
+  auditLogs           AuditLog[]
+  litiges             LitigeJuridique[]
+  clientsProspects    ClientProspect[]
+  materiels           MaterielEngin[]
 
   @@map("entreprises")
 }
@@ -141,6 +148,7 @@ model Chantier {
   litiges                   LitigeJuridique[]
   budgets                   BudgetChantier[]
   auditLogs                 AuditLog[]
+  caisse                    CaisseChantier?
 
   @@map("chantiers")
 }
@@ -155,6 +163,7 @@ model Utilisateur {
   nom           String
   prenom        String
   email         String    @unique
+  auth_user_id  String?   @unique @map("auth_user_id")
   telephone     String
   poste         String
   type          String    @default("CENTRAL") // CENTRAL | CHANTIER
@@ -175,21 +184,28 @@ model Utilisateur {
   notifications     Notification[]
   documentsGED      DocumentGED[]
   demandesAchatEmises DemandeAchat[]
+  mouvementsCaisseEmis MouvementCaisse[] @relation("AuteurMouvementCaisse")
+  mouvementsCaisseValides MouvementCaisse[] @relation("ValidateurMouvementCaisse")
+  demandesCaisseEmises DemandeCaisse[] @relation("DemandeurCaisse")
+  demandesCaisseTraitees DemandeCaisse[] @relation("TraiteurCaisse")
 
   @@map("utilisateurs")
 }
 
 model Role {
-  id          String   @id @default(uuid())
-  code        String   @unique // ADMINISTRATEUR, CONDUCTEUR_TRAVAUX, etc.
-  libelle     String
-  description String?
-  type_acces  String   @default("CENTRAL") @map("type_acces") // CENTRAL | CHANTIER | HYBRIDE
-  created_at  DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  entreprise_id String?  @map("entreprise_id")
+  code          String   // Code métier ; unique globalement pour les modèles et par entreprise pour les personnalisations
+  libelle       String
+  description   String?
+  type_acces    String   @default("CENTRAL") @map("type_acces") // CENTRAL | CHANTIER | HYBRIDE
+  created_at    DateTime @default(now()) @map("created_at")
 
-  utilisateurs Utilisateur[]
-  permissions  RolePermission[]
+  entreprise    Entreprise? @relation(fields: [entreprise_id], references: [id], onDelete: Cascade)
+  utilisateurs  Utilisateur[]
+  permissions   RolePermission[]
 
+  @@index([entreprise_id])
   @@map("roles")
 }
 
@@ -248,6 +264,7 @@ model UserSession {
 
 model AuditLog {
   id             String   @id @default(uuid())
+  entreprise_id  String   @map("entreprise_id")
   utilisateur_id String?  @map("utilisateur_id")
   chantier_id    String?  @map("chantier_id")
   module         String
@@ -260,6 +277,7 @@ model AuditLog {
   donnees_nouvelles Json? @map("donnees_nouvelles")
   created_at     DateTime @default(now()) @map("created_at")
 
+  entreprise     Entreprise  @relation(fields: [entreprise_id], references: [id], onDelete: Cascade)
   utilisateur    Utilisateur? @relation(fields: [utilisateur_id], references: [id], onDelete: SetNull)
   chantier       Chantier?    @relation(fields: [chantier_id], references: [id], onDelete: SetNull)
 
@@ -289,6 +307,7 @@ model Notification {
 
 model DocumentGED {
   id               String   @id @default(uuid())
+  entreprise_id    String   @map("entreprise_id")
   chantier_id      String?  @map("chantier_id")
   auteur_id        String?  @map("auteur_id")
   nom_fichier      String   @map("nom_fichier")
@@ -301,6 +320,7 @@ model DocumentGED {
   confidentiel     Boolean  @default(false)
   created_at       DateTime @default(now()) @map("created_at")
 
+  entreprise       Entreprise   @relation(fields: [entreprise_id], references: [id], onDelete: Cascade)
   chantier         Chantier?    @relation(fields: [chantier_id], references: [id], onDelete: SetNull)
   auteur           Utilisateur? @relation(fields: [auteur_id], references: [id], onDelete: SetNull)
 
@@ -397,6 +417,7 @@ model CongeAbsence {
 
 model Fournisseur {
   id                  String   @id @default(uuid())
+  entreprise_id       String   @map("entreprise_id")
   raison_sociale      String   @map("raison_sociale")
   code_fournisseur    String   @unique @map("code_fournisseur")
   categorie           String   // MATERIAUX, SOUS_TRAITANCE, LOCATION_ENGINS
@@ -412,6 +433,7 @@ model Fournisseur {
   actif               Boolean  @default(true)
   created_at          DateTime @default(now()) @map("created_at")
 
+  entreprise          Entreprise @relation(fields: [entreprise_id], references: [id], onDelete: Cascade)
   bonsCommande        BonCommande[]
   factures            FactureFournisseur[]
 
@@ -516,6 +538,7 @@ model LotTravaux {
 
 model MaterielEngin {
   id                  String   @id @default(uuid())
+  entreprise_id       String   @map("entreprise_id")
   chantier_actuel_id  String?  @map("chantier_actuel_id")
   code_parc           String   @unique @map("code_parc")
   type_engin          String   @map("type_engin") // VEHICULE_LEGER, POIDS_LOURD, ENGIN_TERRASSEMENT, ENGIN_LEVAGE
@@ -553,6 +576,7 @@ model MaterielEngin {
   created_at          DateTime @default(now()) @map("created_at")
   updated_at          DateTime @updatedAt @map("updated_at")
 
+  entreprise          Entreprise @relation(fields: [entreprise_id], references: [id], onDelete: Cascade)
   chantierActuel      Chantier? @relation(fields: [chantier_actuel_id], references: [id], onDelete: SetNull)
   entretiens          EntretienVehicule[]
   piecesRemplacables  PieceRemplacableVehicule[]
@@ -631,6 +655,7 @@ model BienImmobilier {
 
 model ClientProspect {
   id                 String   @id @default(uuid())
+  entreprise_id      String   @map("entreprise_id")
   code_client        String   @unique @map("code_client")
   nom                String
   prenom             String
@@ -642,6 +667,7 @@ model ClientProspect {
   type_financement   String   @default("CASH") @map("type_financement") // CASH, CREDIT_BANCAIRE_BONIFIE, ECHEANCIER_PROMOTEUR
   created_at         DateTime @default(now()) @map("created_at")
 
+  entreprise         Entreprise @relation(fields: [entreprise_id], references: [id], onDelete: Cascade)
   reservations       ReservationVEFA[]
 
   @@map("commercial_clients")
@@ -670,6 +696,7 @@ model ReservationVEFA {
 
 model LitigeJuridique {
   id             String   @id @default(uuid())
+  entreprise_id  String   @map("entreprise_id")
   chantier_id    String?  @map("chantier_id")
   reference      String   @unique
   partie_adverse String   @map("partie_adverse")
@@ -680,7 +707,8 @@ model LitigeJuridique {
   description    String
   created_at     DateTime @default(now()) @map("created_at")
 
-  chantier       Chantier? @relation(fields: [chantier_id], references: [id], onDelete: SetNull)
+  entreprise     Entreprise @relation(fields: [entreprise_id], references: [id], onDelete: Cascade)
+  chantier       Chantier?  @relation(fields: [chantier_id], references: [id], onDelete: SetNull)
 
   @@map("juridique_dossiers")
 }
@@ -698,4 +726,66 @@ model BudgetChantier {
 
   @@unique([chantier_id, annee_exercice])
   @@map("comptabilite_budgets")
+}
+
+
+// ==========================================
+// 12. CAISSE DE FONDS DE ROULEMENT PAR CHANTIER
+// ==========================================
+
+model CaisseChantier {
+  id          String   @id @default(uuid())
+  chantier_id String   @unique @map("chantier_id")
+  plafond     Decimal  @default(0) @db.Decimal(18, 2)
+  devise      String   @default("DZD")
+  actif       Boolean  @default(true)
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  chantier    Chantier @relation(fields: [chantier_id], references: [id], onDelete: Cascade)
+  mouvements  MouvementCaisse[]
+  demandes    DemandeCaisse[]
+
+  @@map("comptabilite_caisses_chantier")
+}
+
+model MouvementCaisse {
+  id             String   @id @default(uuid())
+  caisse_id      String   @map("caisse_id")
+  type           String   // APPROVISIONNEMENT | SORTIE | AJUSTEMENT
+  montant        Decimal  @db.Decimal(18, 2)
+  motif          String
+  reference      String?
+  justificatif_url String? @map("justificatif_url")
+  auteur_id      String   @map("auteur_id")
+  validateur_id  String?  @map("validateur_id")
+  created_at     DateTime @default(now()) @map("created_at")
+
+  caisse         CaisseChantier @relation(fields: [caisse_id], references: [id], onDelete: Cascade)
+  auteur         Utilisateur @relation("AuteurMouvementCaisse", fields: [auteur_id], references: [id])
+  validateur     Utilisateur? @relation("ValidateurMouvementCaisse", fields: [validateur_id], references: [id])
+
+  @@index([caisse_id, created_at])
+  @@map("comptabilite_mouvements_caisse")
+}
+
+model DemandeCaisse {
+  id             String   @id @default(uuid())
+  caisse_id      String   @map("caisse_id")
+  demandeur_id   String   @map("demandeur_id")
+  traiteur_id    String?  @map("traiteur_id")
+  montant        Decimal  @db.Decimal(18, 2)
+  motif          String
+  statut         String   @default("EN_ATTENTE") // EN_ATTENTE | APPROUVEE | REFUSEE
+  commentaire_traitement String? @map("commentaire_traitement")
+  mouvement_id   String?  @unique @map("mouvement_id")
+  created_at     DateTime @default(now()) @map("created_at")
+  traite_at      DateTime? @map("traite_at")
+
+  caisse         CaisseChantier @relation(fields: [caisse_id], references: [id], onDelete: Cascade)
+  demandeur      Utilisateur @relation("DemandeurCaisse", fields: [demandeur_id], references: [id])
+  traiteur       Utilisateur? @relation("TraiteurCaisse", fields: [traiteur_id], references: [id])
+
+  @@index([caisse_id, statut, created_at])
+  @@map("comptabilite_demandes_caisse")
 }
