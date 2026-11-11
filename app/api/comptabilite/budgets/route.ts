@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasAnyRole } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasAnyRole(current.profile, ['RESPONSABLE_COMPTABILITE'])) return NextResponse.json({ error: 'Accès aux budgets réservé au service comptabilité.' }, { status: 403 });
+  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'COMPTABILITE', 'CONSULTER')) return NextResponse.json({ error: 'Accès aux budgets réservé au service comptabilité.' }, { status: 403 });
   const ids = current.profile.type === 'CHANTIER'
     ? assignedChantierIds(current.profile)
     : (await prisma.chantier.findMany({ where: { entreprise_id: current.profile.entreprise_id }, select: { id: true } })).map(x => x.id);
@@ -20,7 +20,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile)) return NextResponse.json({ error: 'Seul le siège central peut modifier les budgets.' }, { status: 403 });
+  if (current.profile.type !== 'CENTRAL' || (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'COMPTABILITE', 'MODIFIER'))) return NextResponse.json({ error: 'Permission centrale COMPTABILITE / MODIFIER requise.' }, { status: 403 });
   const body = await request.json();
   const chantierId = String(body?.chantier_id || '');
   const year = Number(body?.annee_exercice);
