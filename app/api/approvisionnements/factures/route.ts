@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'COMPTABILITE', 'MODIFIER') && !hasPermission(current.profile, 'COMPTABILITE', 'VALIDER')) return NextResponse.json({ error: 'Gestion des factures réservée au service comptabilité.' }, { status: 403 });
+  if (current.profile.type !== 'CENTRAL' || (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'COMPTABILITE', 'MODIFIER') && !hasPermission(current.profile, 'COMPTABILITE', 'VALIDER'))) return NextResponse.json({ error: 'Gestion des factures réservée au service comptabilité.' }, { status: 403 });
   const body = await request.json();
   if (!body?.id || !['NON_PAYEE', 'PARTIELLE', 'PAYEE'].includes(body.statut_paiement)) {
     return NextResponse.json({ error: 'Identifiant ou statut de règlement invalide.' }, { status: 400 });
