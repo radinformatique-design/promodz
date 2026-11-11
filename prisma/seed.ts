@@ -63,17 +63,23 @@ async function main() {
   // 3. Rôles
   console.log('3. Insertion Rôles...');
   for (const role of DEMO_ROLES) {
-    await prisma.role.upsert({
-      where: { code: role.code },
-      update: {},
-      create: {
-        id: role.id,
-        code: role.code,
-        libelle: role.libelle,
-        description: role.description,
-        type_acces: (role as any).type_acces || ((role as any).niveau_hierarchique > 2 ? 'CHANTIER' : 'CENTRAL'),
-      },
+    const existingRole = await prisma.role.findFirst({
+      where: { code: role.code, entreprise_id: null },
+      select: { id: true },
     });
+
+    if (!existingRole) {
+      await prisma.role.create({
+        data: {
+          id: role.id,
+          entreprise_id: null,
+          code: role.code,
+          libelle: role.libelle,
+          description: role.description,
+          type_acces: (role as any).type_acces || ((role as any).niveau_hierarchique > 2 ? 'CHANTIER' : 'CENTRAL'),
+        },
+      });
+    }
   }
 
   // 3 bis. Catalogue des permissions et matrice par rôle (seed de démonstration uniquement)
