@@ -25,7 +25,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Nom, prénom, e-mail, poste, type et rôle sont obligatoires.' }, { status: 400 });
   }
 
-  const role = await prisma.role.findUnique({ where: { id: roleId } });
+  const role = await prisma.role.findFirst({
+    where: {
+      id: roleId,
+      OR: [{ entreprise_id: null }, { entreprise_id: current.profile.entreprise_id }],
+    },
+  });
   if (!role || (role.type_acces !== type && role.type_acces !== 'HYBRIDE')) {
     return NextResponse.json({ error: 'Rôle inexistant ou incompatible avec le périmètre choisi.' }, { status: 400 });
   }
