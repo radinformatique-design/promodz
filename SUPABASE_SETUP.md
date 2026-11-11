@@ -98,7 +98,7 @@ Le modèle ajoute une caisse par chantier avec un plafond défini par le siège.
 - `POST /api/caisse` : sortie ou approvisionnement, avec contrôle de solde et plafond.
 - `GET/POST/PATCH /api/caisse/demandes` : consultation, demande et décision du siège.
 
-Après mise à jour de la branche, exécuter à nouveau `npx prisma db push`, puis appliquer la migration `202611100006_cash_fund_rls.sql`. Si `bootstrap-system-rbac.sql` a déjà été exécuté, le relancer : les nouvelles permissions CAISSE sont insérées sans supprimer les permissions existantes.
+Après mise à jour de la branche, exécuter `npx prisma db push` avant d'appliquer les nouvelles migrations SQL. Appliquer ensuite `202611100006_cash_fund_rls.sql` puis `202611100007_tenant_rbac.sql` dans cet ordre. Si `bootstrap-system-rbac.sql` a déjà été exécuté, le relancer pour ajouter les permissions CAISSE et attribuer le catalogue complet aux rôles administrateurs propres à chaque entreprise.
 
 
 ### Caisse de fonds de roulement
