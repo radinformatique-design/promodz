@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin } from '@/lib/auth/current-app-profile';
+import { getCurrentAppProfile, assignedChantierIds, isCompanyAdmin, hasPermission } from '@/lib/auth/current-app-profile';
 
 export async function GET() {
   const current = await getCurrentAppProfile();
@@ -15,7 +15,7 @@ export async function GET() {
       where,
       include: {
         lotsTravaux: true,
-        comptesBancaires: isCompanyAdmin(current.profile) || current.profile.role.code === 'RESPONSABLE_COMPTABILITE',
+        comptesBancaires: isCompanyAdmin(current.profile) || hasPermission(current.profile, 'COMPTABILITE', 'CONSULTER'),
       },
       orderBy: { created_at: 'desc' },
     });
