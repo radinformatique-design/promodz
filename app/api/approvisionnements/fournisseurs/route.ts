@@ -26,7 +26,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'AJOUTER')) return NextResponse.json({ error: 'Gestion des fournisseurs réservée au service approvisionnements.' }, { status: 403 });
+  if (current.profile.type !== 'CENTRAL' || (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'AJOUTER'))) return NextResponse.json({ error: 'Gestion des fournisseurs réservée au service approvisionnements.' }, { status: 403 });
 
   const body = await request.json();
   const required = ['raison_sociale', 'code_fournisseur', 'categorie', 'adresse', 'wilaya', 'telephone', 'email'];
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'MODIFIER')) return NextResponse.json({ error: 'Permission de modification des fournisseurs requise.' }, { status: 403 });
+  if (current.profile.type !== 'CENTRAL' || (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'MODIFIER'))) return NextResponse.json({ error: 'Permission de modification des fournisseurs requise.' }, { status: 403 });
   const body = await request.json();
   if (!body?.id) return NextResponse.json({ error: 'Identifiant fournisseur obligatoire.' }, { status: 400 });
   const target = await prisma.fournisseur.findFirst({
@@ -83,7 +83,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  if (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'SUPPRIMER')) return NextResponse.json({ error: 'Permission de suppression des fournisseurs requise.' }, { status: 403 });
+  if (current.profile.type !== 'CENTRAL' || (!isCompanyAdmin(current.profile) && !hasPermission(current.profile, 'APPROVISIONNEMENTS', 'SUPPRIMER'))) return NextResponse.json({ error: 'Permission de suppression des fournisseurs requise.' }, { status: 403 });
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Identifiant fournisseur obligatoire.' }, { status: 400 });
   const target = await prisma.fournisseur.findFirst({
