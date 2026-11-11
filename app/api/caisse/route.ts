@@ -3,14 +3,13 @@ import prisma from '@/lib/prisma';
 import {
   getCurrentAppProfile,
   assignedChantierIds,
-  hasAnyRole,
   hasPermission,
   isCompanyAdmin,
 } from '@/lib/auth/current-app-profile';
 
-const isCentralFinance = (profile: { type: string; role: { code: string } }) =>
+const isCentralFinance = (profile: Parameters<typeof hasPermission>[0] & { type: string }) =>
   profile.type === 'CENTRAL' &&
-  (isCompanyAdmin(profile as any) || hasAnyRole(profile as any, ['RESPONSABLE_COMPTABILITE']));
+  (isCompanyAdmin(profile as any) || hasPermission(profile, 'CAISSE', 'GERER_PLAFOND') || hasPermission(profile, 'CAISSE', 'TRAITER_DEMANDE'));
 
 const can = (
   profile: Parameters<typeof hasPermission>[0] & { type: string; role: { code: string } },
