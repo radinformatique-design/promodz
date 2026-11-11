@@ -47,8 +47,7 @@ async function balanceFor(caisseId: string, tx: any) {
 export async function GET() {
   const current = await getCurrentAppProfile();
   if (!current) return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-  const central = isCentralFinance(current.profile);
-  if (!central && !can(current.profile as any, 'CONSULTER')) {
+  if (!can(current.profile as any, 'CONSULTER')) {
     return NextResponse.json({ error: 'Permission CAISSE / CONSULTER requise.' }, { status: 403 });
   }
 
