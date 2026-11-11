@@ -41,7 +41,7 @@ Les politiques couvrent les tables métier présentes dans les migrations, y com
 1. Dans **Authentication → Users**, créer le compte administrateur avec son adresse e-mail.
 2. Ouvrir `supabase/bootstrap-first-admin.sql`, remplacer les champs `REPLACE_*` par les informations réelles de l'entreprise et l'UUID Auth du compte.
 3. Exécuter le script une seule fois dans le SQL Editor Supabase. Il vérifie l'existence de l'UUID Auth et la correspondance de l'e-mail, puis crée l'entreprise, le rôle administrateur, le profil et les paramètres DZD.
-4. Exécuter ensuite `supabase/bootstrap-system-rbac.sql` pour créer les 10 rôles métier complémentaires, les 110 permissions et leur matrice initiale. Le rôle administrateur est présent et dispose de toutes les permissions.
+4. Exécuter ensuite `supabase/bootstrap-system-rbac.sql` pour créer les 10 rôles métier complémentaires, les 110 permissions et leur matrice initiale. Le rôle administrateur est présent et dispose de toutes les permissions. Le script est idempotent : il peut être réexécuté après une mise à jour afin d'ajouter les nouvelles permissions aux rôles de référence sans dupliquer les affectations.
 5. Ne pas lancer `npm run prisma:seed` en production : ce seed facultatif insère des données de démonstration.
 
 
@@ -49,6 +49,8 @@ Les politiques couvrent les tables métier présentes dans les migrations, y com
 - `DATABASE_URL` : chaîne de connexion pooler Supabase pour l'application.
 - `DIRECT_URL` : chaîne directe réservée aux opérations de migration.
 - Les mots de passe de connexion sont stockés uniquement dans les variables d'environnement locales / du fournisseur d'hébergement.
+
+Les Route Handlers des modules matériel, approvisionnements, RH, comptabilité et caisse contrôlent également les permissions effectives (`CONSULTER`, `AJOUTER`, `MODIFIER`, `SUPPRIMER`, `VALIDER`, etc.) des rôles personnalisés. Les rôles ne doivent pas être considérés comme une autorisation suffisante à eux seuls : les droits effectifs enregistrés dans `role_permissions` sont vérifiés côté serveur.
 
 ## État de cette étape
 Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_user_id`, le flux de récupération de mot de passe, les scripts de bootstrap et les politiques RLS des 34 modèles sont ajoutés. La migration 007 permet la personnalisation RBAC sans écrire dans les modèles globaux. Plusieurs API métier sont connectées à Prisma avec contrôles de rôle et de périmètre ; les autres écrans et opérations doivent encore être migrés et testés. Prisma utilise une connexion PostgreSQL distincte et ne bénéficie pas automatiquement des politiques RLS de la session Supabase.
