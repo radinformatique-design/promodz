@@ -14,13 +14,16 @@ export async function GET() {
     });
 
     const permissions = profile.role.permissions.map((item) => item.permission);
+    const {
+      auth_user_id: _authUserId,
+      role: _role,
+      affectations: _affectations,
+      ...safeProfile
+    } = profile;
+
     const user = {
-      ...profile,
-      role: undefined,
-      permissions: undefined,
-      affectations: undefined,
+      ...safeProfile,
       chantiers_assignes: assignedChantierIds(profile),
-      updated_at: undefined,
     };
 
     return NextResponse.json({
