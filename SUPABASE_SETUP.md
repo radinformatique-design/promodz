@@ -15,7 +15,7 @@ Renseigner `NEXT_PUBLIC_APP_URL` avec l'URL de l'environnement courant. Les invi
 
 ## 2. Installer et créer les tables
 ```bash
-npm install
+npm ci
 npx prisma generate
 npx prisma db push
 ```
@@ -23,7 +23,7 @@ npx prisma db push
 Les 31 modèles métier initiaux sont conservés. Les trois modèles de caisse de fonds de roulement ajoutés à l'évolution précédente portent le total du schéma à 34 modèles. La migration RBAC 007 ajoute uniquement une colonne de rattachement sur le modèle `Role` : aucun modèle métier existant n'est supprimé ni remplacé. Pour les environnements durables, convertir ensuite les changements de schéma en migrations versionnées avec `npx prisma migrate dev --name init` puis déployer avec `npx prisma migrate deploy`.
 
 ## 3. Activer les politiques RLS
-Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique : `001` à `007`.
+Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts de `supabase/migrations/` dans l'ordre numérique : `001` à `008`.
 
 - `001` : Auth, profils, entreprise et affectations.
 - `002` : accès central aux chantiers de l'entreprise.
@@ -35,7 +35,7 @@ Après `npx prisma db push`, exécuter dans le SQL Editor Supabase les scripts d
 
 Les migrations `003` et `005` s'arrêtent volontairement si elles trouvent des lignes sans entreprise. La base cible étant neuve, ce contrôle doit réussir après `prisma db push`. Sur une base déjà alimentée, il faut d'abord attribuer les bons `entreprise_id` aux lignes concernées.
 
-Les politiques couvrent les tables métier présentes dans les migrations, y compris les trois nouvelles tables de caisse (le schéma Prisma comporte maintenant 34 modèles). Cela ne remplace pas les contrôles des Route Handlers Prisma : une connexion Prisma directe ne reprend pas automatiquement le JWT Supabase et contourne donc le RLS de la session. Avant la production, tester les deux voies (Supabase/PostgREST et API Prisma) avec au moins deux entreprises et plusieurs rôles/chantiers.
+Les politiques couvrent les tables métier présentes dans les migrations, y compris les trois nouvelles tables de caisse (le schéma Prisma comporte maintenant 34 modèles). La migration 008 renforce les fonctions RBAC tenant-aware, verrouille les affectations utilisateur/chantier à l'entreprise et empêche l'attribution d'un rôle administrateur global. Elle ajoute aussi des déclencheurs d'intégrité qui restent actifs lorsque Prisma contourne RLS. Cela ne remplace pas les contrôles des Route Handlers Prisma : une connexion Prisma directe ne reprend pas automatiquement le JWT Supabase et contourne donc le RLS de la session. Avant la production, tester les deux voies (Supabase/PostgREST et API Prisma) avec au moins deux entreprises et plusieurs rôles/chantiers.
 
 ## 4. Créer le premier administrateur
 1. Dans **Authentication → Users**, créer le compte administrateur avec son adresse e-mail.
@@ -50,7 +50,7 @@ Les politiques couvrent les tables métier présentes dans les migrations, y com
 - `DIRECT_URL` : chaîne directe réservée aux opérations de migration.
 - Les mots de passe de connexion sont stockés uniquement dans les variables d'environnement locales / du fournisseur d'hébergement.
 
-Les Route Handlers des modules matériel, approvisionnements, RH, comptabilité et caisse contrôlent également les permissions effectives (`CONSULTER`, `AJOUTER`, `MODIFIER`, `SUPPRIMER`, `VALIDER`, etc.) des rôles personnalisés. Les rôles ne doivent pas être considérés comme une autorisation suffisante à eux seuls : les droits effectifs enregistrés dans `role_permissions` sont vérifiés côté serveur.
+Les Route Handlers des modules matériel, approvisionnements, RH, comptabilité et caisse contrôlent également les permissions effectives (`CONSULTER`, `AJOUTER`, `MODIFIER`, `SUPPRIMER`, `VALIDER`, etc.) des rôles personnalisés. Les API d'administration journalisent les invitations, modifications et désactivations de comptes ; la désactivation suspend également le compte Auth lorsque la clé privée serveur est configurée. Les rôles ne doivent pas être considérés comme une autorisation suffisante à eux seuls : les droits effectifs enregistrés dans `role_permissions` sont vérifiés côté serveur.
 
 ## État de cette étape
 Le SDK Supabase SSR, les clients navigateur/serveur, le lien de profil `auth_user_id`, le flux de récupération de mot de passe, les scripts de bootstrap et les politiques RLS des 34 modèles sont ajoutés. La migration 007 permet la personnalisation RBAC sans écrire dans les modèles globaux. Plusieurs API métier sont connectées à Prisma avec contrôles de rôle et de périmètre ; les autres écrans et opérations doivent encore être migrés et testés. Prisma utilise une connexion PostgreSQL distincte et ne bénéficie pas automatiquement des politiques RLS de la session Supabase.
@@ -100,7 +100,7 @@ Le modèle ajoute une caisse par chantier avec un plafond défini par le siège.
 - `POST /api/caisse` : sortie ou approvisionnement, avec contrôle de solde et plafond.
 - `GET/POST/PATCH /api/caisse/demandes` : consultation, demande et décision du siège.
 
-Après mise à jour de la branche, exécuter `npx prisma db push` avant d'appliquer les nouvelles migrations SQL. Appliquer ensuite `202611100006_cash_fund_rls.sql` puis `202611100007_tenant_rbac.sql` dans cet ordre. Si `bootstrap-system-rbac.sql` a déjà été exécuté, le relancer pour ajouter les permissions CAISSE et attribuer le catalogue complet aux rôles administrateurs propres à chaque entreprise.
+Sur une base neuve, exécuter `npx prisma db push` une seule fois, puis appliquer les migrations SQL `001` à `008` dans l'ordre. Si `bootstrap-system-rbac.sql` a déjà été exécuté, le relancer pour ajouter les nouvelles permissions de référence. Ne pas lancer `prisma migrate dev` sur la base Supabase après `db push` : cette branche utilise `db push` pour l'initialisation. Pour introduire ultérieurement l'historique Prisma Migrate, créer une migration de baseline depuis une base de développement dédiée, puis marquer explicitement cette baseline comme appliquée sur les environnements déjà synchronisés.
 
 
 ### Caisse de fonds de roulement
@@ -112,6 +112,17 @@ Après mise à jour de la branche, exécuter `npx prisma db push` avant d'appliq
 
  
 ### Invitations de nouveaux utilisateurs
-Pour utiliser le bouton **Créer un utilisateur** dans Administration, configurer `SUPABASE_AUTH_ADMIN_KEY` dans l'environnement serveur de l'application avec une clé Supabase privée autorisée à gérer Auth. Cette variable doit rester strictement côté serveur : ne jamais la préfixer par `NEXT_PUBLIC_`, ne jamais la placer dans le code client et ne jamais la committer avec une vraie valeur.
+Pour utiliser le bouton **Créer un utilisateur** et suspendre/réactiver un compte depuis Administration, configurer `SUPABASE_AUTH_ADMIN_KEY` dans l'environnement serveur de l'application avec une clé Supabase privée autorisée à gérer Auth. Cette variable doit rester strictement côté serveur : ne jamais la préfixer par `NEXT_PUBLIC_`, ne jamais la placer dans le code client et ne jamais la committer avec une vraie valeur.
 
 L'API `POST /api/admin/users/invite` vérifie d'abord la session et le rôle administrateur, envoie une invitation par e-mail via Supabase Auth, puis crée le profil métier et ses affectations. Le lien d'invitation passe par `/auth/callback` et dirige l'utilisateur vers la définition de son mot de passe. Si la création du profil échoue après l'invitation, l'API tente de supprimer le compte Auth créé pour éviter un compte orphelin.
+
+
+## 6. Vérification RLS multi-entreprises / multi-chantiers
+
+Sur un projet Supabase de test, après les migrations et le bootstrap RBAC, exécuter le script `supabase/tests/rls_tenant_isolation.sql` dans le SQL Editor. Il crée deux entreprises, un profil chantier affecté à un seul chantier, puis vérifie :
+- qu’un utilisateur chantier ne voit pas les autres chantiers de sa propre entreprise ;
+- qu’il ne voit ni utilisateurs ni rôles d’une autre entreprise ;
+- qu’un administrateur ne peut pas créer une affectation croisée ;
+- que les déclencheurs bloquent aussi les écritures incohérentes réalisées par une connexion serveur qui contourne RLS.
+
+Le script est transactionnel et termine par `ROLLBACK`. Il doit être exécuté uniquement sur une base de test. Cette vérification SQL n’a pas été exécutée depuis cette branche faute de connexion au projet Supabase réel.
