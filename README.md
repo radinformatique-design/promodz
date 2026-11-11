@@ -43,32 +43,36 @@ promotedz-next/
 
 ---
 
-## 🚀 Démarrage Rapide
+## 🚀 Installation et démarrage
 
-### 1. Configuration de PostgreSQL
-Dans le fichier `.env`, configurez votre chaîne de connexion PostgreSQL :
-```env
-DATABASE_URL="postgresql://utilisateur:mot_de_passe@localhost:5432/batiprom_db?schema=public"
+### 1. Préparer l'environnement Supabase
+Copier `.env.example` vers `.env.local`, puis renseigner les valeurs du projet Supabase et les chaînes PostgreSQL dans le fichier local. Ne jamais committer `.env.local`, un mot de passe ou une clé privée.
+
+### 2. Installer et générer Prisma
+```bash
+npm install
+npx prisma generate
 ```
 
-### 2. Déployer les tables sur PostgreSQL
-Pour créer automatiquement les tables et relations dans votre base PostgreSQL :
+### 3. Créer le schéma sur un projet Supabase neuf
 ```bash
 npx prisma db push
 ```
+Exécuter ensuite, dans l'ordre, les migrations SQL `supabase/migrations/202611100001_*.sql` à `202611100007_*.sql`, puis suivre [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) pour le premier administrateur et le catalogue RBAC.
 
-### 3. Remplir avec les données démo (Seed)
+### 4. Données de démonstration (facultatif, développement uniquement)
 ```bash
 npm run prisma:seed
 ```
+Ne pas exécuter ce seed sur une base de production : les données de démonstration ne sont pas nécessaires au fonctionnement normal de l'application.
 
-### 4. Lancer le serveur de développement
+### 5. Lancer l'application
 ```bash
 npm run dev
 ```
 L'application sera accessible sur [http://localhost:3000](http://localhost:3000).
 
-### 5. Compiler pour la production
+### 6. Compiler pour la production
 ```bash
 npm run build
 npm run start
