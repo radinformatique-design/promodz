@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { JournalHistoriquePanel } from '../components/JournalHistoriquePanel';
 import { 
   Ruler, 
   Layers, 
@@ -20,7 +21,8 @@ import {
   ChevronRight, 
   TrendingUp,
   Download,
-  ShieldCheck
+  ShieldCheck,
+  ClipboardList
 } from 'lucide-react';
 import { 
   LotTravaux, 
@@ -31,7 +33,7 @@ import {
   SituationTravaux 
 } from '../types/database';
 
-type MetreTab = 'metres' | 'lots_bpu' | 'situations' | 'plans_bet';
+type MetreTab = 'metres' | 'lots_bpu' | 'situations' | 'plans_bet' | 'journaux';
 
 export const MetresView: React.FC = () => {
   const { 
@@ -43,6 +45,7 @@ export const MetresView: React.FC = () => {
     metres, 
     plansBET,
     situationsTravaux,
+    rapportsChantier,
     currentUser,
     ajouterLotTravaux,
     ajouterMetre,
@@ -289,6 +292,19 @@ export const MetresView: React.FC = () => {
             }`}
           >
             <Building className="w-4 h-4" /> Plans BET & Indices BPE
+          </button>
+          <button
+            onClick={() => setActiveTab('journaux')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === 'journaux' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40' : 'text-blue-200 hover:bg-white/5'
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" /> Historique Journaux
+            {rapportsChantier.length > 0 && (
+              <span className="bg-white/20 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                {rapportsChantier.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -615,6 +631,19 @@ export const MetresView: React.FC = () => {
               </table>
             </div>
           </div>
+        )}
+
+        {/* 5. HISTORIQUE DES JOURNAUX DE CHANTIER */}
+        {activeTab === 'journaux' && (
+          <JournalHistoriquePanel
+            rapports={rapportsChantier}
+            chantiers={allChantiers}
+            selectedChantierId={selectedChantierId}
+            title="Historique Technique des Journaux de Chantier"
+            subtitle="Suivi chronologique, contrôle des effectifs, intempéries, engins et signalements issus des rapports des conducteurs de travaux."
+            accentColor="orange"
+            allowChantierFilter={true}
+          />
         )}
       </div>
 

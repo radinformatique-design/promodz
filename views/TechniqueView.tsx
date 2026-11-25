@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { JournalHistoriquePanel } from '../components/JournalHistoriquePanel';
 import { 
   Layers, 
   Ruler, 
@@ -458,7 +459,12 @@ export const TechniqueView: React.FC = () => {
               activeTab === 'rapports' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40' : 'text-indigo-200 hover:bg-white/5'
             }`}
           >
-            <ClipboardCheck className="w-4 h-4" /> Journal de Chantier
+            <ClipboardCheck className="w-4 h-4" /> Historique Journaux
+            {chantierRapports.length > 0 && (
+              <span className="bg-white/20 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                {chantierRapports.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -1075,89 +1081,18 @@ export const TechniqueView: React.FC = () => {
           </div>
         )}
 
-        {/* 6. JOURNAL DE CHANTIER (RAPPORTS) */}
+        {/* 6. JOURNAL DE CHANTIER & HISTORIQUE (RAPPORTS) */}
         {activeTab === 'rapports' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl border border-slate-200 p-4 shadow-sm">
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => window.print()}
-                  className="px-3.5 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-slate-200 transition-all border border-slate-200"
-                >
-                  <Printer className="w-3.5 h-3.5" /> Imprimer Journal
-                </button>
-              </div>
-
-              <button 
-                onClick={() => setIsNewRapportModalOpen(true)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm hover:bg-indigo-700 transition-all self-start sm:self-auto"
-              >
-                <Plus className="w-4 h-4" /> Nouveau Rapport Journalier
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {chantierRapports.map(rapport => (
-                <div 
-                  key={rapport.id} 
-                  className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden group hover:border-indigo-400 hover:shadow-lg transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="p-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-700">
-                          <Calendar className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-black text-slate-900">{rapport.date_rapport}</div>
-                          <div className="text-[9px] uppercase font-bold text-slate-400">{rapport.type}</div>
-                        </div>
-                      </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        rapport.statut === 'VALIDE' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {rapport.statut}
-                      </span>
-                    </div>
-
-                    <div className="p-5 space-y-3">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500 font-medium">Météo :</span>
-                        <span className="font-semibold text-slate-800">{rapport.meteo}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500 font-medium">Effectif sur site :</span>
-                        <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">{rapport.effectif_total} ouvriers</span>
-                      </div>
-                      {rapport.materiel_sur_site && (
-                        <div className="text-[11px] text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                          <strong className="text-slate-800 font-medium">Engins : </strong>{rapport.materiel_sur_site}
-                        </div>
-                      )}
-                      <div className="pt-2">
-                        <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Activités Principales</div>
-                        <p className="text-xs text-slate-700 line-clamp-3 leading-relaxed">
-                          {rapport.activites_realisees}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                    <div className="text-[10px] text-slate-500">
-                      Rédigé par <strong className="text-slate-800">{rapport.redacteur_nom}</strong>
-                    </div>
-                    <button 
-                      onClick={() => setSelectedRapportForDetail(rapport)}
-                      className="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
-                    >
-                      Consulter <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <JournalHistoriquePanel
+            rapports={rapportsChantier}
+            chantiers={allChantiers}
+            selectedChantierId={selectedChantierId}
+            title="Historique Technique des Journaux de Chantier"
+            subtitle="Suivi chronologique, contrôle des effectifs, intempéries, engins et signalements issus des rapports des conducteurs de travaux."
+            accentColor="indigo"
+            allowChantierFilter={true}
+            onNewRapport={() => setIsNewRapportModalOpen(true)}
+          />
         )}
       </div>
 

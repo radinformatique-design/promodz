@@ -27,10 +27,12 @@ import {
   BarChart3,
   CreditCard,
   Store,
-  FileText
+  FileText,
+  ClipboardList
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UUID_TO_SLUG } from '../data/systemConstants';
+import { JournalHistoriquePanel } from '../components/JournalHistoriquePanel';
 
 type CanonicalRole =
   | 'role-admin'
@@ -112,6 +114,7 @@ export const DashboardView: React.FC = () => {
   // Filters
   const [filterPeriod, setFilterPeriod] = useState<'EXERCICE_2026' | 'THIS_MONTH' | 'THIS_WEEK'>('EXERCICE_2026');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'EN_COURS' | 'EN_ATTENTE' | 'ALERTE'>('ALL');
+  const [adminTab, setAdminTab] = useState<'kpis' | 'journal'>('kpis');
 
   const roleSlug = useMemo(
     () => resolveCanonicalRole(currentUser?.role_id, currentUser?.poste),
@@ -323,58 +326,101 @@ export const DashboardView: React.FC = () => {
       {/* 1. ADMINISTRATEUR / GÉRANT GLOBAL DASHBOARD */}
       {(roleSlug === 'role-admin' || roleSlug === 'role-gerant') && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            {/* 1. Nombre de chantiers */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Chantiers</span>
-              <div className="text-xl font-bold font-mono text-slate-900 mt-1">{totalChantiersCount}</div>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Projets actifs</span>
-            </div>
-
-            {/* 2. Effectifs */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Effectifs</span>
-              <div className="text-xl font-bold font-mono text-blue-900 mt-1">{totalEmployesCount}</div>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Ouvriers & Cadres</span>
-            </div>
-
-            {/* 3. Achats en attente */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-xs">
-              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Achats Attente</span>
-              <div className="text-xl font-bold font-mono text-amber-900 mt-1">{pendingAchatsCount}</div>
-              <span className="text-[10px] text-amber-700 block mt-0.5">DA en cours</span>
-            </div>
-
-            {/* 4. Dépenses globales */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Dépenses Glob.</span>
-              <div className="text-sm font-bold font-mono text-slate-900 mt-1 truncate" title={formatDZD(totalBudgetEngage)}>
-                {formatDZD(totalBudgetEngage)}
-              </div>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Sur budget prévisionnel</span>
-            </div>
-
-            {/* 5. Alertes */}
-            <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 shadow-xs">
-              <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block">Alertes</span>
-              <div className="text-xl font-bold font-mono text-rose-900 mt-1">{totalAlertesCount}</div>
-              <span className="text-[10px] text-rose-700 block mt-0.5">Critiques & Avis</span>
-            </div>
-
-            {/* 6. Notifications */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Notifications</span>
-              <div className="text-xl font-bold font-mono text-indigo-900 mt-1">{notifications.length}</div>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Alertes enregistrées</span>
-            </div>
-
-            {/* 7. Avancement des projets */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 shadow-xs">
-              <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Avancement</span>
-              <div className="text-xl font-bold font-mono text-emerald-900 mt-1">{avgAvancement}%</div>
-              <span className="text-[10px] text-emerald-700 block mt-0.5">Moyenne physique</span>
-            </div>
+          {/* Onglets Tableau de bord Administrateur / Gérant */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
+            <button
+              onClick={() => setAdminTab('kpis')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                adminTab === 'kpis'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 text-orange-600" />
+              <span>Vue Globale (KPIs)</span>
+            </button>
+            <button
+              onClick={() => setAdminTab('journal')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                adminTab === 'journal'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <ClipboardList className="w-4 h-4 text-orange-600" />
+              <span>Journal de Chantier</span>
+              <span className="px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-800 text-[10px] font-black">
+                {rapportsChantier.length}
+              </span>
+            </button>
           </div>
+
+          {adminTab === 'kpis' && (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+              {/* 1. Nombre de chantiers */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Chantiers</span>
+                <div className="text-xl font-bold font-mono text-slate-900 mt-1">{totalChantiersCount}</div>
+                <span className="text-[10px] text-slate-400 block mt-0.5">Projets actifs</span>
+              </div>
+
+              {/* 2. Effectifs */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Effectifs</span>
+                <div className="text-xl font-bold font-mono text-blue-900 mt-1">{totalEmployesCount}</div>
+                <span className="text-[10px] text-slate-400 block mt-0.5">Ouvriers & Cadres</span>
+              </div>
+
+              {/* 3. Achats en attente */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-xs">
+                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Achats Attente</span>
+                <div className="text-xl font-bold font-mono text-amber-900 mt-1">{pendingAchatsCount}</div>
+                <span className="text-[10px] text-amber-700 block mt-0.5">DA en cours</span>
+              </div>
+
+              {/* 4. Dépenses globales */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Dépenses Glob.</span>
+                <div className="text-sm font-bold font-mono text-slate-900 mt-1 truncate" title={formatDZD(totalBudgetEngage)}>
+                  {formatDZD(totalBudgetEngage)}
+                </div>
+                <span className="text-[10px] text-slate-400 block mt-0.5">Sur budget prévisionnel</span>
+              </div>
+
+              {/* 5. Alertes */}
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 shadow-xs">
+                <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block">Alertes</span>
+                <div className="text-xl font-bold font-mono text-rose-900 mt-1">{totalAlertesCount}</div>
+                <span className="text-[10px] text-rose-700 block mt-0.5">Critiques & Avis</span>
+              </div>
+
+              {/* 6. Notifications */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Notifications</span>
+                <div className="text-xl font-bold font-mono text-indigo-900 mt-1">{notifications.length}</div>
+                <span className="text-[10px] text-slate-400 block mt-0.5">Alertes enregistrées</span>
+              </div>
+
+              {/* 7. Avancement des projets */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 shadow-xs">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Avancement</span>
+                <div className="text-xl font-bold font-mono text-emerald-900 mt-1">{avgAvancement}%</div>
+                <span className="text-[10px] text-emerald-700 block mt-0.5">Moyenne physique</span>
+              </div>
+            </div>
+          )}
+
+          {adminTab === 'journal' && (
+            <JournalHistoriquePanel
+              rapports={rapportsChantier}
+              chantiers={chantiers}
+              selectedChantierId={selectedChantierId}
+              title="Historique des Journaux de Chantier"
+              subtitle="Suivi centralisé des rapports journaliers, effectifs, intempéries et signalements des conducteurs de travaux."
+              accentColor="orange"
+              allowChantierFilter={true}
+            />
+          )}
         </div>
       )}
 

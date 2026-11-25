@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { JournalHistoriquePanel } from '../components/JournalHistoriquePanel';
 import { 
   HardHat, 
   ClipboardCheck, 
@@ -565,85 +566,18 @@ export const SuiviTravauxView: React.FC = () => {
           </div>
         )}
 
-        {/* 2. JOURNAL DE CHANTIER */}
+        {/* 2. JOURNAL DE CHANTIER & HISTORIQUE */}
         {activeTab === 'journal' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => window.print()}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-200 transition-all"
-                >
-                  <Printer className="w-3.5 h-3.5" /> Imprimer Journal
-                </button>
-              </div>
-
-              <button
-                onClick={() => setIsNewRapportModalOpen(true)}
-                className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all self-start sm:self-auto"
-              >
-                <Plus className="w-4 h-4" /> Nouveau Rapport Journalier
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {chantierRapports.map(rap => (
-                <div 
-                  key={rap.id} 
-                  className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden hover:border-amber-400 hover:shadow-lg transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="p-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800">
-                          <Calendar className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-black text-slate-900">{rap.date_rapport}</div>
-                          <div className="text-[9px] uppercase font-bold text-slate-400">{rap.type}</div>
-                        </div>
-                      </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        rap.statut === 'VALIDE' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {rap.statut}
-                      </span>
-                    </div>
-
-                    <div className="p-5 space-y-3 text-xs">
-                      <div className="flex justify-between text-slate-600">
-                        <span>Météo :</span>
-                        <strong className="text-slate-800">{rap.meteo}</strong>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Effectif présent :</span>
-                        <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">{rap.effectif_total} ouvriers</span>
-                      </div>
-                      {rap.materiel_sur_site && (
-                        <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                          <strong className="text-slate-800">Engins : </strong>{rap.materiel_sur_site}
-                        </div>
-                      )}
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Activités réalisées</div>
-                        <p className="text-slate-700 line-clamp-3 leading-relaxed">{rap.activites_realisees}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-[10px] text-slate-500">Rédigé par <strong className="text-slate-700">{rap.redacteur_nom}</strong></span>
-                    <button
-                      onClick={() => setSelectedRapportForDetail(rap)}
-                      className="text-amber-700 font-bold hover:underline flex items-center gap-1"
-                    >
-                      Détails <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <JournalHistoriquePanel
+            rapports={rapportsChantier}
+            chantiers={allChantiers}
+            selectedChantierId={selectedChantierId}
+            title="Journal de Chantier & Historique"
+            subtitle="Saisie et historique chronologique des rapports journaliers du conducteur de travaux."
+            accentColor="orange"
+            allowChantierFilter={selectedChantierId === 'ALL'}
+            onNewRapport={() => setIsNewRapportModalOpen(true)}
+          />
         )}
 
         {/* 3. CONTRÔLE CTC & COULAGE */}
