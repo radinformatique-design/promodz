@@ -125,7 +125,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Sidebar Responsive : fixe sur Desktop, Tiroir glissant sur Mobile/iPhone/Android */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] lg:w-64 bg-[#030712] text-slate-200 flex flex-col shrink-0 border-r border-slate-800/80 select-none h-full min-h-screen transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"}`}
+        className={`fixed lg:static top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] lg:w-64 bg-[#030712] text-slate-200 flex flex-col shrink-0 border-r border-slate-800/80 select-none h-[100dvh] max-h-[100dvh] transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"}`}
       >
         {/* Brand & Corporate Identity + Bouton Fermer sur Mobile */}
         <div className="p-4 border-b border-slate-800/80 flex items-center justify-between gap-2">
@@ -222,6 +222,7 @@ export const Sidebar: React.FC = () => {
     </>
   );
 };
+
 
 
 
