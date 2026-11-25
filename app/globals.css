@@ -1,0 +1,323 @@
+﻿@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Nuances Orange & Bleu Nuit officielles BatiProm */
+  --color-emerald-400: #fb923c;
+  --color-emerald-500: #f97316;
+  --color-emerald-600: #ea580c;
+  --color-emerald-700: #c2410c;
+  --color-emerald-800: #9a3412;
+  --color-emerald-900: #7c2d12;
+  --color-emerald-950: #431407;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    color: #0f172a;
+    background-color: #f8fafc;
+  }
+
+  html.dark body {
+    color: #f1f5f9;
+    background-color: #020617; /* Noir profond */
+  }
+
+  /* ========================================================================== */
+  /* MODE SOMBRE GLOBAL : SURFACES NOIR (#020617) & BLEU NUIT (#0b132b)         */
+  /* ========================================================================== */
+
+  /* 1. Surfaces principales, cartes et panneaux */
+  html.dark .bg-white,
+  html.dark [class*="bg-white"] {
+    background-color: #0b132b !important; /* Bleu nuit élégant */
+    border-color: #1e293b !important;
+  }
+
+  /* 2. Arrière-plans secondaires, conteneurs et fonds de cartes clairs */
+  html.dark .bg-slate-50,
+  html.dark [class*="bg-slate-50"],
+  html.dark .bg-slate-100,
+  html.dark [class*="bg-slate-100"] {
+    background-color: #040817 !important; /* Noir bleu nuit très profond */
+    border-color: #1e293b !important;
+  }
+
+  html.dark .bg-slate-200,
+  html.dark [class*="bg-slate-200"] {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+  }
+
+  /* 3. Lignes de séparation et bordures */
+  html.dark .border-slate-100,
+  html.dark .border-slate-200,
+  html.dark .border-slate-300,
+  html.dark [class*="border-slate-100"],
+  html.dark [class*="border-slate-200"],
+  html.dark [class*="border-slate-300"] {
+    border-color: #1e293b !important;
+  }
+
+  html.dark .divide-slate-100 > * + *,
+  html.dark .divide-slate-200 > * + *,
+  html.dark [class*="divide-slate"] > * + * {
+    border-color: #1e293b !important;
+  }
+
+  /* ========================================================================== */
+  /* LISIBILITÉ & ADAPTABILITÉ DU TEXTE SUR TOUTES LES PAGES                   */
+  /* ========================================================================== */
+
+  /* 4. Titres, En-têtes et textes primaires (slate-900 / 800 / 950) -> Blanc éclatant */
+  html.dark .text-slate-950,
+  html.dark .text-slate-900,
+  html.dark .text-slate-800,
+  html.dark [class*="text-slate-950"],
+  html.dark [class*="text-slate-900"],
+  html.dark [class*="text-slate-800"] {
+    color: #f8fafc !important;
+  }
+
+  /* 5. Corps de texte, paragraphes et données (slate-700 / 600) -> Gris clair net */
+  html.dark .text-slate-700,
+  html.dark .text-slate-600,
+  html.dark [class*="text-slate-700"],
+  html.dark [class*="text-slate-600"] {
+    color: #cbd5e1 !important;
+  }
+
+  /* 6. Textes secondaires, dates, timestamps (slate-500 / 400) -> Contraste rehaussé */
+  html.dark .text-slate-500,
+  html.dark .text-slate-400,
+  html.dark [class*="text-slate-500"],
+  html.dark [class*="text-slate-400"] {
+    color: #94a3b8 !important;
+  }
+
+  /* 7. Préserver les textes blancs sur boutons colorés */
+  html.dark .text-white,
+  html.dark [class*="text-white"] {
+    color: #ffffff !important;
+  }
+
+  /* ========================================================================== */
+  /* BADGES & STATUTS : ADAPTATION CHROMATIQUE POUR LISIBILITÉ MAXIMALE         */
+  /* ========================================================================== */
+
+  /* Vert / Succès / Conforme / Validé */
+  html.dark [class*="text-emerald-700"],
+  html.dark [class*="text-emerald-800"],
+  html.dark [class*="text-emerald-900"],
+  html.dark [class*="text-emerald-950"],
+  html.dark [class*="text-green-700"],
+  html.dark [class*="text-green-800"],
+  html.dark [class*="text-green-900"] {
+    color: #4ade80 !important; /* Vert clair lumineux */
+  }
+
+  html.dark [class*="bg-emerald-50"],
+  html.dark [class*="bg-emerald-100"],
+  html.dark [class*="bg-green-50"],
+  html.dark [class*="bg-green-100"] {
+    background-color: rgba(34, 197, 94, 0.15) !important;
+    border-color: rgba(34, 197, 94, 0.3) !important;
+  }
+
+  /* Ambre / Jaune / En attente / Attention */
+  html.dark [class*="text-amber-700"],
+  html.dark [class*="text-amber-800"],
+  html.dark [class*="text-amber-900"],
+  html.dark [class*="text-yellow-700"],
+  html.dark [class*="text-yellow-800"] {
+    color: #fde047 !important; /* Jaune or lumineux */
+  }
+
+  html.dark [class*="bg-amber-50"],
+  html.dark [class*="bg-amber-100"],
+  html.dark [class*="bg-yellow-50"],
+  html.dark [class*="bg-yellow-100"] {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+  }
+
+  /* Rose / Rouge / Rejeté / Retard / Erreur */
+  html.dark [class*="text-rose-700"],
+  html.dark [class*="text-rose-800"],
+  html.dark [class*="text-rose-900"],
+  html.dark [class*="text-red-700"],
+  html.dark [class*="text-red-800"],
+  html.dark [class*="text-red-900"] {
+    color: #fca5a5 !important; /* Rouge corail clair */
+  }
+
+  html.dark [class*="bg-rose-50"],
+  html.dark [class*="bg-rose-100"],
+  html.dark [class*="bg-red-50"],
+  html.dark [class*="bg-red-100"] {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+  }
+
+  /* Bleu / Info / Siège */
+  html.dark [class*="text-blue-700"],
+  html.dark [class*="text-blue-800"],
+  html.dark [class*="text-blue-900"] {
+    color: #93c5fd !important; /* Bleu ciel lumineux */
+  }
+
+  html.dark [class*="bg-blue-50"],
+  html.dark [class*="bg-blue-100"] {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+  }
+
+  /* Violet / Juridique / Catégories */
+  html.dark [class*="text-purple-700"],
+  html.dark [class*="text-purple-800"],
+  html.dark [class*="text-purple-900"],
+  html.dark [class*="text-indigo-700"],
+  html.dark [class*="text-indigo-800"] {
+    color: #d8b4fe !important; /* Lilas clair */
+  }
+
+  html.dark [class*="bg-purple-50"],
+  html.dark [class*="bg-purple-100"],
+  html.dark [class*="bg-indigo-50"],
+  html.dark [class*="bg-indigo-100"] {
+    background-color: rgba(168, 85, 247, 0.15) !important;
+    border-color: rgba(168, 85, 247, 0.3) !important;
+  }
+
+  /* ========================================================================== */
+  /* FORMULAIRES, INPUTS & SÉLECTEURS                                          */
+  /* ========================================================================== */
+  html.dark input:not([type="checkbox"]):not([type="radio"]),
+  html.dark select,
+  html.dark textarea {
+    background-color: #060b1c !important;
+    border-color: #1e293b !important;
+    color: #f8fafc !important;
+  }
+
+  html.dark input:focus,
+  html.dark select:focus,
+  html.dark textarea:focus {
+    border-color: #f97316 !important; /* Orange 500 */
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.25) !important;
+    outline: none !important;
+  }
+
+  html.dark input::placeholder,
+  html.dark textarea::placeholder {
+    color: #64748b !important;
+  }
+
+  /* ========================================================================== */
+  /* TABLEAUX & DONNÉES                                                        */
+  /* ========================================================================== */
+  html.dark table thead,
+  html.dark table thead tr,
+  html.dark table thead th {
+    background-color: #060b1c !important;
+    color: #94a3b8 !important;
+    border-color: #1e293b !important;
+  }
+
+  html.dark table tbody tr {
+    border-color: #1e293b !important;
+  }
+
+  html.dark table tbody tr:hover {
+    background-color: #111c44 !important; /* Bleu nuit interactif */
+  }
+
+  html.dark table tbody td {
+    color: #cbd5e1 !important;
+  }
+
+  html.dark table tbody tr:hover td {
+    color: #f8fafc !important;
+  }  /* ========================================================================== */
+  /* RESPONSIVE DESIGN & OPTIMISATIONS MOBILES (ANDROID & IPHONE / IOS)         */
+  /* ========================================================================== */
+
+  /* 1. Safe Area Insets pour iPhone (Dynamic Island, encoches, barre d'accueil) */
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 2. Empêcher le zoom forcé iOS Safari sur les inputs sur mobile */
+  @media (max-width: 640px) {
+    input:not([type="checkbox"]):not([type="radio"]), 
+    select, 
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* 3. Défilement tactile ultra-fluide pour les tableaux sur smartphone */
+  .table-responsive,
+  div:has(> table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    max-width: 100%;
+  }
+
+  /* 4. Barre de défilement mobile élégante et discrète */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 9999px;
+  }
+
+  html.dark ::-webkit-scrollbar-thumb {
+    background: rgba(71, 85, 105, 0.5);
+  }
+
+  /* ========================================================================== */
+  /* OMBRES & SURVOLS                                                          */
+  /* ========================================================================== */
+  html.dark .hover\:bg-slate-50:hover,
+  html.dark [class*="hover:bg-slate-50"]:hover,
+  html.dark .hover\:bg-slate-100:hover,
+  html.dark [class*="hover:bg-slate-100"]:hover {
+    background-color: #111c44 !important;
+  }
+
+  html.dark .hover\:bg-slate-200:hover,
+  html.dark [class*="hover:bg-slate-200"]:hover {
+    background-color: #1e293b !important;
+  }
+
+  html.dark .shadow-2xl,
+  html.dark .shadow-xl,
+  html.dark .shadow-lg,
+  html.dark .shadow-md,
+  html.dark .shadow-sm {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7) !important;
+  }
+}
+
+

@@ -1,0 +1,32 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: batiprom-erp
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+
+  # Décommentez ce bloc si vous souhaitez utiliser une base PostgreSQL locale dans Docker
+  # (pensez alors à adapter DATABASE_URL et DIRECT_URL dans .env vers postgresql://postgres:postgres@db:5432/batiprom)
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: batiprom-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: batiprom
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+
+# volumes:
+#   pgdata:
